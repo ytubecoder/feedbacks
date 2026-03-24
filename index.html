@@ -755,10 +755,211 @@ async function buildZip(markdown) {
     imgFolder.file(`${String(i + 1).padStart(3, '0')}.png`, base64, { base64: true });
   }
 
+  // Build session player
+  const sessionData = {
+    date: new Date(sessionStartTime).toISOString(),
+    slides: screenshots.map((shot, i) => {
+      const nextShot = screenshots[i + 1];
+      const startT = shot.timestamp;
+      const endT = nextShot ? nextShot.timestamp : startT + 5;
+      const transcript = transcriptSegments
+        .filter(seg => seg.start < endT && seg.end > startT)
+        .map(seg => seg.text.trim())
+        .join(' ');
+      return {
+        image: shot.dataUrl,
+        timestamp: startT,
+        duration: endT - startT,
+        marker: shot.clickPoint || shot.boundingBox || null,
+        transcript
+      };
+    })
+  };
+  zip.file('player.html', buildPlayerHtml(sessionData));
+
   log('Building ZIP...');
   const blob = await zip.generateAsync({ type: 'blob' });
   log(`ZIP size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
   return blob;
+}
+
+// ── Build self-contained player HTML ──
+function buildPlayerHtml(data) {
+  const jsonStr = JSON.stringify(data);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedbacks Player — ${data.date.slice(0, 10)}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#0a0a0a;color:#e0e0e0;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:1.5rem}
+h1{font-size:1.3rem;font-weight:600;color:#fff;margin-bottom:0.2rem}
+.meta{font-size:0.8rem;color:#666;margin-bottom:1rem}
+.stage{width:100%;max-width:960px;background:#111;border:1px solid #333;border-radius:10px;overflow:hidden;margin-bottom:0.75rem;position:relative}
+.stage img{width:100%;display:block}
+.transcript-box{width:100%;max-width:960px;min-height:60px;background:#111;border:1px solid #272727;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.95rem;line-height:1.6;color:#ccc}
+.transcript-box.fade{animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.marker-info{font-size:0.75rem;color:#888;margin-bottom:0.75rem;height:1.2em}
+.controls{display:flex;gap:0.6rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;justify-content:center}
+button{background:#222;color:#e0e0e0;border:1px solid #444;border-radius:6px;padding:0.4rem 0.9rem;font-size:0.85rem;cursor:pointer;transition:background 0.15s}
+button:hover{background:#333;border-color:#666}
+button.active{background:#1a6b3c;border-color:#2a8b4c;color:#fff}
+select{background:#1a1a1a;color:#e0e0e0;border:1px solid #333;border-radius:6px;padding:0.35rem 0.5rem;font-size:0.8rem}
+.info{font-size:0.8rem;color:#888;min-width:80px;text-align:center}
+.timeline{width:100%;max-width:960px;height:32px;background:#1a1a1a;border:1px solid #333;border-radius:6px;position:relative;cursor:pointer;margin-bottom:0.5rem;overflow:hidden}
+.timeline-fill{height:100%;background:#1a3c6b;border-radius:5px;transition:width 0.15s}
+.timeline-markers{position:absolute;top:0;left:0;right:0;bottom:0}
+.timeline-tick{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.15)}
+.timeline-tick.current{background:#4ade80;width:3px}
+</style>
+</head>
+<body>
+<h1>Feedbacks Player</h1>
+<p class="meta">${data.date.slice(0, 16).replace('T', ' ')}</p>
+<div class="stage"><img id="slide" src="" alt="Screenshot"></div>
+<div class="marker-info" id="markerInfo"></div>
+<div class="transcript-box" id="transcript">Press play or use arrow keys</div>
+<div class="timeline" id="timeline" onclick="onTimelineClick(event)">
+  <div class="timeline-fill" id="timelineFill"></div>
+  <div class="timeline-markers" id="timelineMarkers"></div>
+</div>
+<div class="controls">
+  <button onclick="prev()" title="Previous (Left arrow)">&#9664; Prev</button>
+  <button id="playBtn" onclick="togglePlay()" title="Play/Pause (Space)">&#9654; Play</button>
+  <button onclick="next()" title="Next (Right arrow)">Next &#9654;</button>
+  <span class="info" id="counter">1 / ${data.slides.length}</span>
+  <span class="info" id="timestamp">0:00</span>
+  <label style="font-size:0.8rem;color:#888">Speed:</label>
+  <select id="speed" onchange="onSpeedChange()">
+    <option value="0.5">0.5x</option>
+    <option value="1" selected>1x</option>
+    <option value="2">2x</option>
+    <option value="4">4x</option>
+  </select>
+</div>
+<script>
+const SESSION = ${jsonStr};
+const slides = SESSION.slides;
+let current = 0;
+let playing = false;
+let timer = null;
+let speed = 1;
+
+const $=id=>document.getElementById(id);
+
+// Build timeline ticks
+const totalDuration = slides.length > 0 ? slides[slides.length-1].timestamp + slides[slides.length-1].duration : 1;
+const markersEl = $('timelineMarkers');
+slides.forEach((s,i) => {
+  const tick = document.createElement('div');
+  tick.className = 'timeline-tick';
+  tick.dataset.index = i;
+  tick.style.left = (s.timestamp / totalDuration * 100) + '%';
+  markersEl.appendChild(tick);
+});
+
+function show(index) {
+  if (index < 0 || index >= slides.length) return;
+  current = index;
+  const s = slides[current];
+  $('slide').src = s.image;
+  $('counter').textContent = (current+1) + ' / ' + slides.length;
+  $('timestamp').textContent = fmtTime(s.timestamp);
+
+  const tb = $('transcript');
+  tb.textContent = s.transcript || '(no transcript)';
+  tb.classList.remove('fade');
+  void tb.offsetWidth;
+  tb.classList.add('fade');
+
+  if (s.marker) {
+    if (s.marker.marker && s.marker.x !== undefined) {
+      $('markerInfo').textContent = 'Marker ' + s.marker.marker + ' — clicked at (' + s.marker.x + ', ' + s.marker.y + ')';
+    } else if (s.marker.marker && s.marker.x1 !== undefined) {
+      $('markerInfo').textContent = 'Marker ' + s.marker.marker + ' — selected region (' + s.marker.x1 + ',' + s.marker.y1 + ')→(' + s.marker.x2 + ',' + s.marker.y2 + ')';
+    } else {
+      $('markerInfo').textContent = '';
+    }
+  } else {
+    $('markerInfo').textContent = '';
+  }
+
+  // Update timeline
+  $('timelineFill').style.width = (s.timestamp / totalDuration * 100) + '%';
+  markersEl.querySelectorAll('.timeline-tick').forEach((t,i) => {
+    t.classList.toggle('current', i === current);
+  });
+}
+
+function togglePlay() {
+  if (playing) pause(); else play();
+}
+
+function play() {
+  playing = true;
+  $('playBtn').innerHTML = '&#10074;&#10074; Pause';
+  $('playBtn').classList.add('active');
+  scheduleNext();
+}
+
+function pause() {
+  playing = false;
+  clearTimeout(timer);
+  $('playBtn').innerHTML = '&#9654; Play';
+  $('playBtn').classList.remove('active');
+}
+
+function scheduleNext() {
+  if (!playing) return;
+  if (current >= slides.length - 1) { pause(); return; }
+  const dur = slides[current].duration * 1000 / speed;
+  timer = setTimeout(() => { next(); scheduleNext(); }, dur);
+}
+
+function next() {
+  if (current < slides.length - 1) { show(current + 1); if (playing) { clearTimeout(timer); scheduleNext(); } }
+}
+
+function prev() {
+  if (current > 0) { show(current - 1); if (playing) { clearTimeout(timer); scheduleNext(); } }
+}
+
+function onTimelineClick(e) {
+  const rect = $('timeline').getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const targetTime = pct * totalDuration;
+  let closest = 0;
+  for (let i = 0; i < slides.length; i++) {
+    if (Math.abs(slides[i].timestamp - targetTime) < Math.abs(slides[closest].timestamp - targetTime)) closest = i;
+  }
+  show(closest);
+  if (playing) { clearTimeout(timer); scheduleNext(); }
+}
+
+function onSpeedChange() {
+  speed = parseFloat($('speed').value);
+  if (playing) { clearTimeout(timer); scheduleNext(); }
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s/60);
+  const sec = Math.floor(s%60);
+  return m + ':' + String(sec).padStart(2,'0');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); next(); }
+  if (e.code === 'ArrowLeft') { e.preventDefault(); prev(); }
+});
+
+show(0);
+<\/script>
+</body>
+</html>`;
 }
 
 // ── Download ──
