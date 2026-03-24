@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feedbacks — Screen + Voice Capture</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #fff;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 1.5rem;
+  }
+
+  .config {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .config label {
+    font-size: 0.8rem;
+    color: #aaa;
+  }
+
+  .config input {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    outline: none;
+  }
+
+  .config input:focus { border-color: #666; }
+
+  .config input[type="password"] { width: 260px; }
+
+  .whisper-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+  }
+
+  .whisper-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #666;
+  }
+
+  .whisper-dot.local { background: #4ade80; }
+  .whisper-dot.cloud { background: #60a5fa; }
+  .whisper-dot.offline { background: #f87171; }
+
+  .controls {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    align-items: center;
+  }
+
+  button {
+    background: #222;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  button:hover:not(:disabled) { background: #333; border-color: #666; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  button.primary {
+    background: #1a6b3c;
+    border-color: #2a8b4c;
+    color: #fff;
+  }
+
+  button.primary:hover:not(:disabled) { background: #1f7d46; }
+
+  button.danger {
+    background: #6b1a1a;
+    border-color: #8b2a2a;
+    color: #fff;
+  }
+
+  button.danger:hover:not(:disabled) { background: #7d1f1f; }
+
+  button.download {
+    background: #1a3c6b;
+    border-color: #2a4c8b;
+    color: #fff;
+  }
+
+  .status {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 12px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+  }
+
+  .status.recording {
+    background: #3a1515;
+    border-color: #6b2a2a;
+    color: #ff6b6b;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  .status.processing {
+    background: #3a3015;
+    border-color: #6b5a2a;
+    color: #ffb86b;
+  }
+
+  .status.done {
+    background: #153a1f;
+    border-color: #2a6b3a;
+    color: #6bff8b;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .preview-container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .preview-container video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .preview-placeholder {
+    color: #555;
+    font-size: 0.9rem;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .preview-container .click-hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: #888;
+    background: rgba(0,0,0,0.7);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+
+  .capture-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.15);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .capture-flash.active {
+    opacity: 1;
+    transition: none;
+  }
+
+  .stats {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .stats span { color: #bbb; }
+
+  .log {
+    width: 100%;
+    max-width: 900px;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #111;
+    border: 1px solid #272727;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: #777;
+    line-height: 1.5;
+  }
+
+  .log .error { color: #ff6b6b; }
+  .log .success { color: #6bff8b; }
+  .log .info { color: #6bb5ff; }
+
+  .hotkey-hint {
+    font-size: 0.75rem;
+    color: #555;
+    margin-bottom: 1rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Feedbacks</h1>
+<p class="subtitle">Screen + voice capture for AI feedback sessions</p>
+
+<div class="config">
+  <div class="whisper-status">
+    <div class="whisper-dot" id="whisperDot"></div>
+    <span id="whisperLabel">Checking...</span>
+  </div>
+  <label>OpenAI Key (fallback):</label>
+  <input type="password" id="apiKey" placeholder="sk-..." />
+</div>
+
+<div class="controls">
+  <button id="startBtn" class="primary" onclick="startSession()">Start Session</button>
+  <button id="stopBtn" class="danger" onclick="stopSession()" disabled>Stop Session</button>
+  <button id="downloadBtn" class="download" onclick="downloadZip()" disabled>Download ZIP</button>
+  <span id="status" class="status">Idle</span>
+</div>
+
+<div class="stats">
+  <div>Screenshots: <span id="captureCount">0</span></div>
+  <div>Duration: <span id="duration">0:00</span></div>
+  <div>Transcribed: <span id="transcribeProgress">-</span></div>
+</div>
+
+<div class="preview-container" id="previewContainer">
+  <div class="preview-placeholder" id="placeholder">
+    Click "Start Session" to begin<br>
+    Screen share + microphone will be requested
+  </div>
+  <video id="preview" autoplay muted playsinline style="display:none"></video>
+  <div class="click-hint" id="clickHint" style="display:none">Click to mark a point · Drag to select a region</div>
+  <div class="capture-flash" id="flash"></div>
+</div>
+
+<p class="hotkey-hint">
+  Custom hotkey capture: coming soon
+</p>
+
+<div class="log" id="log"></div>
+
+<script>
+// ── State ──
+let screenStream = null;
+let micStream = null;
+let screenshots = []; // { timestamp, dataUrl, clickPoint?, boundingBox? }
+let sessionStartTime = 0;
+let durationIntervalId = null;
+let isRecording = false;
+let zipBlob = null;
+let markerCount = 0;
+let dragStart = null;
+
+// Whisper connection state
+let whisperLocal = false;
+let whisperCheckId = null;
+const WHISPER_LOCAL_URL = 'http://localhost:8081';
+const WHISPER_CLOUD_URL = 'https://api.openai.com';
+const CHUNK_DURATION = 10000; // 10 seconds
+
+// Chunked transcription state
+let chunkRecorder = null;
+let chunkAudioParts = [];
+let chunkStartTime = 0;
+let chunkRotationId = null;
+let chunkCount = 0;
+let transcribedCount = 0;
+let transcriptSegments = []; // { start, end, text } accumulated
+let pendingTranscriptions = []; // promises for in-flight transcriptions
+
+// ── Elements ──
+const $ = id => document.getElementById(id);
+
+// ── Logging ──
+function log(msg, cls = '') {
+  const el = $('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Persist API key ──
+$('apiKey').value = localStorage.getItem('feedbacks_api_key') || '';
+$('apiKey').addEventListener('change', () => {
+  localStorage.setItem('feedbacks_api_key', $('apiKey').value);
+});
+
+// ── Whisper health check ──
+async function checkWhisper() {
+  try {
+    const resp = await fetch(`${WHISPER_LOCAL_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    if (resp.ok) {
+      whisperLocal = true;
+      $('whisperDot').className = 'whisper-dot local';
+      $('whisperLabel').textContent = 'Local';
+      $('apiKey').style.opacity = '0.4';
+      return;
+    }
+  } catch {}
+  whisperLocal = false;
+  const hasKey = $('apiKey').value.trim().length > 0;
+  $('whisperDot').className = `whisper-dot ${hasKey ? 'cloud' : 'offline'}`;
+  $('whisperLabel').textContent = hasKey ? 'Cloud (OpenAI)' : 'No STT';
+  $('apiKey').style.opacity = '1';
+}
+
+// Check on load and every 5 seconds
+checkWhisper();
+whisperCheckId = setInterval(checkWhisper, 5000);
+
+// ── Screenshot capture ──
+function captureScreenshot(clickPoint, boundingBox) {
+  if (!screenStream || !isRecording) return;
+
+  const video = $('preview');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  // Draw marker annotation
+  let marker = null;
+  if (clickPoint) {
+    markerCount++;
+    marker = markerCount;
+    drawMarker(ctx, clickPoint.x, clickPoint.y, marker, canvas.width);
+  } else if (boundingBox) {
+    markerCount++;
+    marker = markerCount;
+    drawSelectionBox(ctx, boundingBox, marker, canvas.width);
+  }
+
+  const dataUrl = canvas.toDataURL('image/png');
+  const elapsed = (Date.now() - sessionStartTime) / 1000;
+  const shot = { timestamp: elapsed, dataUrl };
+  if (clickPoint) shot.clickPoint = { x: clickPoint.x, y: clickPoint.y, marker };
+  if (boundingBox) shot.boundingBox = { ...boundingBox, marker };
+  screenshots.push(shot);
+
+  $('captureCount').textContent = screenshots.length;
+
+  // Flash effect
+  const flash = $('flash');
+  flash.classList.add('active');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => flash.classList.remove('active'));
+  });
+
+  const label = clickPoint ? ` [Marker ${marker}]` : boundingBox ? ` [Selection ${marker}]` : '';
+  log(`Screenshot #${screenshots.length} at ${formatTime(elapsed)}${label}`);
+}
+
+// ── Draw numbered circle marker ──
+function drawMarker(ctx, x, y, number, imageWidth) {
+  const radius = Math.round(imageWidth * 0.015);
+  const fontSize = Math.round(radius * 1.3);
+
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220, 38, 38, 0.9)';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = Math.max(2, radius * 0.15);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${fontSize}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(number), x, y);
+}
+
+// ── Draw selection rectangle ──
+function drawSelectionBox(ctx, box, number, imageWidth) {
+  const { x1, y1, x2, y2 } = box;
+  const w = x2 - x1;
+  const h = y2 - y1;
+
+  ctx.fillStyle = 'rgba(220, 38, 38, 0.15)';
+  ctx.fillRect(x1, y1, w, h);
+
+  ctx.strokeStyle = 'rgba(220, 38, 38, 0.8)';
+  ctx.lineWidth = Math.max(2, imageWidth * 0.002);
+  ctx.strokeRect(x1, y1, w, h);
+
+  drawMarker(ctx, x1, y1, number, imageWidth);
+}
+
+// ── Chunked audio transcription ──
+function startChunkRecording(micStream) {
+  const mimeType = getSupportedMimeType();
+  chunkAudioParts = [];
+  chunkStartTime = (Date.now() - sessionStartTime) / 1000;
+
+  chunkRecorder = new MediaRecorder(micStream, { mimeType });
+  chunkRecorder.ondataavailable = e => {
+    if (e.data.size > 0) chunkAudioParts.push(e.data);
+  };
+  chunkRecorder.start(1000);
+}
+
+function rotateChunk() {
+  if (!chunkRecorder || chunkRecorder.state !== 'recording') return;
+
+  const partsSnapshot = chunkAudioParts;
+  const startSnapshot = chunkStartTime;
+  chunkCount++;
+  const chunkNum = chunkCount;
+
+  // Stop current recorder — triggers finalization
+  chunkRecorder.stop();
+  const finalizePromise = new Promise(resolve => {
+    chunkRecorder.onstop = () => {
+      const mimeType = getSupportedMimeType();
+      const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'ogg';
+      const blob = new Blob(partsSnapshot, { type: mimeType });
+
+      if (blob.size < 1000) {
+        log(`Chunk ${chunkNum} too small, skipping`, 'info');
+        resolve();
+        return;
+      }
+
+      const transcriptionPromise = transcribeChunk(blob, ext, startSnapshot, chunkNum);
+      pendingTranscriptions.push(transcriptionPromise);
+      transcriptionPromise.then(resolve);
+    };
+  });
+
+  // Start new chunk immediately
+  if (isRecording && micStream) {
+    startChunkRecording(micStream);
+  }
+
+  return finalizePromise;
+}
+
+async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
+  const isLocal = whisperLocal;
+  const baseUrl = isLocal ? WHISPER_LOCAL_URL : WHISPER_CLOUD_URL;
+  const apiKey = $('apiKey').value.trim();
+
+  if (!isLocal && !apiKey) {
+    log(`Chunk ${chunkNum}: no STT available, skipping`, 'error');
+    transcriptSegments.push({
+      start: offsetTime,
+      end: offsetTime + CHUNK_DURATION / 1000,
+      text: '(No transcription available)'
+    });
+    updateTranscribeProgress();
+    return;
+  }
+
+  const headers = {};
+  if (!isLocal) headers['Authorization'] = `Bearer ${apiKey}`;
+
+  const formData = new FormData();
+  formData.append('file', audioBlob, `chunk.${ext}`);
+  formData.append('model', 'whisper-1');
+  formData.append('response_format', 'verbose_json');
+  formData.append('timestamp_granularities[]', 'segment');
+
+  try {
+    const resp = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`${resp.status}: ${errText.slice(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const segments = data.segments || [{ start: 0, end: data.duration || 0, text: data.text || '' }];
+
+    // Offset timestamps by chunk start time
+    for (const seg of segments) {
+      transcriptSegments.push({
+        start: seg.start + offsetTime,
+        end: seg.end + offsetTime,
+        text: seg.text
+      });
+    }
+
+    transcribedCount++;
+    updateTranscribeProgress();
+    log(`Chunk ${chunkNum} transcribed (${segments.length} segments)`, 'success');
+  } catch (err) {
+    log(`Chunk ${chunkNum} failed: ${err.message}`, 'error');
+    transcriptSegments.push({
+      start: offsetTime,
+      end: offsetTime + CHUNK_DURATION / 1000,
+      text: `(Chunk ${chunkNum} transcription failed)`
+    });
+    transcribedCount++;
+    updateTranscribeProgress();
+  }
+}
+
+function updateTranscribeProgress() {
+  $('transcribeProgress').textContent = `${transcribedCount}/${chunkCount}`;
+}
+
+// ── Start session ──
+let micStreamRef = null;
+
+async function startSession() {
+  try {
+    log('Requesting screen share...', 'info');
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always' },
+      audio: false
+    });
+
+    log('Requesting microphone...', 'info');
+    micStreamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Show preview
+    const video = $('preview');
+    video.srcObject = screenStream;
+    video.style.display = 'block';
+    $('placeholder').style.display = 'none';
+    $('clickHint').style.display = 'block';
+
+    // Reset state
+    screenshots = [];
+    markerCount = 0;
+    transcriptSegments = [];
+    pendingTranscriptions = [];
+    chunkCount = 0;
+    transcribedCount = 0;
+    sessionStartTime = Date.now();
+    isRecording = true;
+    zipBlob = null;
+    $('captureCount').textContent = '0';
+    $('transcribeProgress').textContent = '-';
+    $('downloadBtn').disabled = true;
+
+    // Start chunked audio recording
+    startChunkRecording(micStreamRef);
+
+    // Rotate chunks every 10 seconds
+    chunkRotationId = setInterval(rotateChunk, CHUNK_DURATION);
+
+    // Start duration timer
+    durationIntervalId = setInterval(() => {
+      const elapsed = (Date.now() - sessionStartTime) / 1000;
+      $('duration').textContent = formatTime(elapsed);
+    }, 500);
+
+    // Take initial screenshot after video frame renders
+    setTimeout(captureScreenshot, 500);
+
+    // Handle screen share ending
+    screenStream.getVideoTracks()[0].onended = () => {
+      if (isRecording) stopSession();
+    };
+
+    // Update UI
+    $('startBtn').disabled = true;
+    $('stopBtn').disabled = false;
+    setStatus('recording', 'Recording');
+    log('Session started', 'success');
+
+  } catch (err) {
+    log(`Error: ${err.message}`, 'error');
+    cleanup();
+  }
+}
+
+// ── Stop session ──
+async function stopSession() {
+  if (!isRecording) return;
+  isRecording = false;
+
+  // Take final screenshot
+  captureScreenshot();
+
+  // Stop chunk rotation
+  clearInterval(chunkRotationId);
+  clearInterval(durationIntervalId);
+
+  // Finalize the last chunk
+  if (chunkRecorder && chunkRecorder.state === 'recording') {
+    const partsSnapshot = chunkAudioParts;
+    const startSnapshot = chunkStartTime;
+    chunkCount++;
+    const chunkNum = chunkCount;
+
+    chunkRecorder.stop();
+    await new Promise(resolve => {
+      chunkRecorder.onstop = () => {
+        const mimeType = getSupportedMimeType();
+        const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'ogg';
+        const blob = new Blob(partsSnapshot, { type: mimeType });
+
+        if (blob.size >= 1000) {
+          const p = transcribeChunk(blob, ext, startSnapshot, chunkNum);
+          pendingTranscriptions.push(p);
+          p.then(resolve);
+        } else {
+          resolve();
+        }
+      };
+    });
+  }
+
+  // Stop streams
+  screenStream.getTracks().forEach(t => t.stop());
+  micStreamRef.getTracks().forEach(t => t.stop());
+
+  // Hide preview
+  $('preview').style.display = 'none';
+  $('clickHint').style.display = 'none';
+  $('placeholder').style.display = 'block';
+  $('placeholder').textContent = 'Waiting for transcription to finish...';
+
+  $('startBtn').disabled = false;
+  $('stopBtn').disabled = true;
+
+  log(`Session stopped. ${screenshots.length} screenshots, ${chunkCount} audio chunks.`);
+  setStatus('processing', 'Processing...');
+
+  // Wait for all pending transcriptions
+  await Promise.allSettled(pendingTranscriptions);
+  log(`All ${transcribedCount} chunks transcribed.`, 'success');
+
+  // Sort segments by start time (chunks may complete out of order)
+  transcriptSegments.sort((a, b) => a.start - b.start);
+
+  // Build output (no audio in ZIP)
+  const markdown = buildMarkdown(transcriptSegments);
+  zipBlob = await buildZip(markdown);
+
+  $('downloadBtn').disabled = false;
+  setStatus('done', 'Done');
+  $('placeholder').textContent = 'Done! Click "Download ZIP" to save.';
+  log('ZIP ready for download', 'success');
+}
+
+// ── Build markdown ──
+function buildMarkdown(segments) {
+  const date = new Date(sessionStartTime).toISOString().slice(0, 16).replace('T', ' ');
+  let md = `# Feedback Session — ${date}\n\n`;
+
+  if (screenshots.length === 0) {
+    md += '> No screenshots captured.\n\n';
+    for (const seg of segments) {
+      md += `## ${formatTime(seg.start)} - ${formatTime(seg.end)}\n\n`;
+      md += `> ${seg.text.trim()}\n\n`;
+    }
+    return md;
+  }
+
+  for (let i = 0; i < screenshots.length; i++) {
+    const shot = screenshots[i];
+    const nextShot = screenshots[i + 1];
+    const startT = shot.timestamp;
+    const endT = nextShot ? nextShot.timestamp : Infinity;
+
+    md += `## ${formatTime(startT)}`;
+    if (nextShot) md += ` - ${formatTime(endT)}`;
+    md += `\n\n`;
+
+    md += `![Screenshot ${i + 1}](./images/${String(i + 1).padStart(3, '0')}.png)\n\n`;
+
+    // Marker annotation
+    if (shot.clickPoint) {
+      md += `**[Marker ${shot.clickPoint.marker} — user clicked at (${shot.clickPoint.x}, ${shot.clickPoint.y})]**\n\n`;
+    } else if (shot.boundingBox) {
+      md += `**[Marker ${shot.boundingBox.marker} — user selected region (${shot.boundingBox.x1},${shot.boundingBox.y1})→(${shot.boundingBox.x2},${shot.boundingBox.y2})]**\n\n`;
+    }
+
+    // Find overlapping transcript segments
+    const overlapping = segments.filter(seg =>
+      seg.start < endT && seg.end > startT
+    );
+
+    if (overlapping.length > 0) {
+      for (const seg of overlapping) {
+        md += `> ${seg.text.trim()}\n\n`;
+      }
+    }
+  }
+
+  return md;
+}
+
+// ── Build ZIP (no audio) ──
+async function buildZip(markdown) {
+  const zip = new JSZip();
+  zip.file('session.md', markdown);
+
+  const imgFolder = zip.folder('images');
+  for (let i = 0; i < screenshots.length; i++) {
+    const dataUrl = screenshots[i].dataUrl;
+    const base64 = dataUrl.split(',')[1];
+    imgFolder.file(`${String(i + 1).padStart(3, '0')}.png`, base64, { base64: true });
+  }
+
+  log('Building ZIP...');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  log(`ZIP size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+  return blob;
+}
+
+// ── Download ──
+function downloadZip() {
+  if (!zipBlob) return;
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  a.href = url;
+  a.download = `feedbacks-${ts}.zip`;
+  a.click();
+  URL.revokeObjectURL(url);
+  log('Download started');
+}
+
+// ── Click / drag on preview to capture ──
+function mapToVideoCoords(e) {
+  const video = $('preview');
+  const rect = video.getBoundingClientRect();
+  const scaleX = video.videoWidth / rect.width;
+  const scaleY = video.videoHeight / rect.height;
+  return {
+    x: Math.round((e.clientX - rect.left) * scaleX),
+    y: Math.round((e.clientY - rect.top) * scaleY)
+  };
+}
+
+$('preview').addEventListener('mousedown', (e) => {
+  if (!isRecording) return;
+  e.preventDefault();
+  dragStart = mapToVideoCoords(e);
+});
+
+$('preview').addEventListener('mouseup', (e) => {
+  if (!isRecording || !dragStart) return;
+  const end = mapToVideoCoords(e);
+  const dx = Math.abs(end.x - dragStart.x);
+  const dy = Math.abs(end.y - dragStart.y);
+  const dragThreshold = 10;
+
+  if (dx > dragThreshold || dy > dragThreshold) {
+    const boundingBox = {
+      x1: Math.min(dragStart.x, end.x),
+      y1: Math.min(dragStart.y, end.y),
+      x2: Math.max(dragStart.x, end.x),
+      y2: Math.max(dragStart.y, end.y)
+    };
+    captureScreenshot(null, boundingBox);
+  } else {
+    captureScreenshot(dragStart, null);
+  }
+  dragStart = null;
+});
+
+// TODO: User-configurable hotkey capture
+// Planned: let users set their own key combo via a settings UI
+// Store in localStorage as { ctrl: bool, shift: bool, alt: bool, key: string }
+
+// ── Helpers ──
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function setStatus(cls, text) {
+  const el = $('status');
+  el.className = `status ${cls}`;
+  el.textContent = text;
+}
+
+function getSupportedMimeType() {
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const t of types) {
+    if (MediaRecorder.isTypeSupported(t)) return t;
+  }
+  return 'audio/webm';
+}
+
+function cleanup() {
+  if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+  if (micStreamRef) micStreamRef.getTracks().forEach(t => t.stop());
+  clearInterval(durationIntervalId);
+  clearInterval(chunkRotationId);
+  isRecording = false;
+  $('startBtn').disabled = false;
+  $('stopBtn').disabled = true;
+  setStatus('', 'Idle');
+}
+</script>
+</body>
+</html>
