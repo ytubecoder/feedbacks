@@ -23,7 +23,7 @@ This tool captures your screen and microphone. That sounds invasive, so here's e
 - **Screenshots stay on your machine.** They go into a ZIP on your local filesystem. You choose when and where to share them.
 - **No analytics, no telemetry, no accounts.** The app is a single HTML file with zero tracking.
 - **You control the screen share.** The browser's native screen share picker lets you choose exactly which window or tab to share. You can stop sharing at any time.
-- **The source is ~400 lines of vanilla JS.** Read it in 10 minutes. There's nothing hidden.
+- **The source is vanilla JS in a single HTML file.** Read it yourself. There's nothing hidden.
 
 If you use the OpenAI Whisper API fallback (optional, for users who don't want to set up local whisper), audio chunks are sent to OpenAI's servers for transcription. This is the only case where data leaves your machine, and it's opt-in.
 
@@ -66,36 +66,39 @@ cd feedbacks
 git clone https://github.com/ggerganov/whisper.cpp
 cd whisper.cpp && cmake -B build && cmake --build build -j --config Release && cd ..
 
-# 3. Download a speech-to-text model (~150MB)
-sh whisper.cpp/models/download-ggml-model.sh base.en
+# 3. Download a speech-to-text model
+sh whisper.cpp/models/download-ggml-model.sh small.en
 
-# 4. Launch
-./start.sh whisper.cpp/models/ggml-base.en.bin
+# 4. Launch (starts whisper + app server automatically)
+python3 server.py
 ```
 
-Open **http://localhost:8080** in Chrome. Press Ctrl+C to stop.
+Open **http://localhost:8080** in Chrome. Press Ctrl+C to stop both servers.
+
+`server.py` auto-detects whisper binary and model, starts it, and provides a WebM→WAV transcription proxy. If whisper.cpp isn't installed, it attempts to clone and build it automatically.
 
 ### No-install cloud mode
 
-Just open `index.html` in a browser. Enter an OpenAI API key for transcription (~$0.006/min). No whisper.cpp needed — but audio is sent to OpenAI's servers.
+Open `http://localhost:8080` and enter an OpenAI API key for transcription (~$0.006/min). No whisper.cpp needed — but audio is sent to OpenAI's servers.
 
 ## Usage
 
 1. Click **Start Session** — grant screen share + microphone
-2. **Click** the preview to mark a point (red numbered circle drawn on screenshot)
-3. **Drag** to highlight a region (red rectangle)
-4. **Talk** as you go — audio is transcribed in real-time
-5. Click **Stop Session**
-6. **Download ZIP**
+2. **Switch to the tab/window** you want to give feedback on
+3. **Talk and point** — move your cursor to areas of interest as you narrate. Screenshots auto-capture every second when the screen changes (cursor movement counts).
+4. Go back to the feedbacks tab and click **Stop**
+5. Session auto-saves to disk. **Copy the path** or **Download ZIP**.
 
 ### What you get
 
 ```
-feedbacks-2026-03-25.zip
-├── session.md          # timestamped transcript with screenshot refs + click markers
+sessions/feedbacks-2026-03-31-12-07-32/
+├── session.md          # timestamped transcript with screenshot refs
+├── player.html         # self-contained slideshow player
+├── debug.log           # capture diagnostics
 └── images/
-    ├── 001.png         # screenshot with marker 1 drawn at click point
-    ├── 002.png         # screenshot with marker 2
+    ├── 001.png         # auto-captured screenshot (cursor visible)
+    ├── 002.png
     └── ...
 ```
 
@@ -104,8 +107,6 @@ Example `session.md`:
 ```markdown
 ## 0:12 - 0:25
 ![Screenshot 2](./images/002.png)
-
-**[Marker 2 — user clicked at (450, 320)]**
 
 > When I click on settings here, it takes a while to load and the spinner is barely visible...
 ```
@@ -121,33 +122,37 @@ Claude reads each annotated screenshot, sees where you clicked, matches your mar
 ## Architecture
 
 ```
-Browser (index.html)                    Local machine
+Browser (index.html)                    server.py (:8080)
 ┌─────────────────────┐                ┌──────────────────┐
-│ getDisplayMedia      │                │ whisper-server    │
-│ getUserMedia         │  10s chunks   │ (whisper.cpp)     │
-│ Canvas 2D markers    │──────────────>│ :8081             │
-│ MediaRecorder        │  transcript   │                   │
-│ JSZip                │<──────────────│ /v1/audio/transcr │
-└─────────────────────┘                └──────────────────┘
-        │
-        │ ZIP download
+│ getDisplayMedia      │  POST /save   │ Save sessions     │
+│ VideoFrame API       │──────────────>│ to disk           │
+│ MediaRecorder        │               │                   │
+│ Auto-capture (1s)    │  POST /transcr│ WebM→WAV (ffmpeg) │
+│ Dedup + timeline UI  │──────────────>│ → whisper (:8081) │
+│ JSZip                │  transcript   │                   │
+└─────────────────────┘<──────────────│ whisper-server    │
+        │                              │ (auto-started)    │
+        │ auto-save / ZIP              └──────────────────┘
         ▼
-   session.md + images/
+   sessions/feedbacks-{ts}/
+   ├── session.md + images/
+   ├── player.html
+   └── debug.log
         │
         │ /feedbacks skill
         ▼
    Claude Code analysis
 ```
 
-No server-side code. No database. No accounts. Single HTML file + a shell script.
+No database. No accounts. Single HTML file + Python server.
 
 ## Model recommendations
 
 | Model | Size | Speed (CPU) | Accuracy |
 |-------|------|-------------|----------|
 | `tiny.en` | 75MB | Very fast | Good enough for testing |
-| `base.en` | 150MB | Fast | Good for daily use |
-| `small.en` | 500MB | Moderate | Better accuracy |
+| `base.en` | 150MB | Fast | Good for testing |
+| `small.en` | 500MB | Moderate | **Recommended** — good accuracy |
 | `medium.en` | 1.5GB | Slow | High accuracy |
 
 `.en` variants are English-only — faster and smaller than multilingual models.
