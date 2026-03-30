@@ -168,6 +168,40 @@
     min-height: 100vh;
   }
 
+  .done-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #2a6b3a;
+    background: #0d1f0d;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .done-bar-left { display: flex; align-items: center; gap: 0.5rem; }
+  .done-bar-right { display: flex; align-items: center; gap: 0.4rem; }
+  .done-bar-title { font-size: 0.8rem; color: #6bff8b; font-weight: 600; }
+  .done-bar-summary { font-size: 0.7rem; color: #888; }
+  .done-bar-path {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: #111; border: 1px solid #272727; border-radius: 4px;
+    padding: 0.2rem 0.5rem; cursor: pointer; font-size: 0.65rem;
+  }
+  .done-bar-path:hover { border-color: #444; }
+  .done-bar-path code { color: #58a6ff; }
+  .done-bar-path .copy-btn {
+    color: #666; border: 1px solid #333; border-radius: 2px;
+    padding: 0 0.2rem; background: none; cursor: pointer; font-size: 0.6rem;
+  }
+  .done-bar button {
+    background: #1a3c6b; border: 1px solid #2a4c8b; color: #fff;
+    padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
+  }
+  .done-bar button:hover { background: #1f4a7d; }
+
   .rec-header {
     display: flex;
     align-items: center;
@@ -472,6 +506,8 @@
 
   <div class="setup-config">
     <input type="text" id="ticketId" placeholder="Ticket ID (optional)" maxlength="20" autocomplete="off" spellcheck="false" />
+    <span id="ticketBadge" aria-live="polite" style="display:none; font-size:0.7rem; color:#60a5fa; padding:0.15rem 0.4rem; border-radius:4px; background:#0d1f35; border:1px solid #1a3a60;"></span>
+    <button id="ticketClear" aria-label="Clear ticket ID" style="display:none; background:none; border:none; color:#666; font-size:1rem; cursor:pointer; padding:0 0.25rem;" onclick="clearTicketId()">×</button>
   </div>
 
   <button id="startBtn" onclick="startSession()">Start Session</button>
@@ -480,7 +516,23 @@
 <!-- ═══ Recording View ═══ -->
 <div id="recordingView" class="view">
   <!-- Header -->
-  <div class="rec-header">
+  <!-- Done bar (replaces header after recording) -->
+  <div id="doneBar" class="done-bar" style="display:none;">
+    <div class="done-bar-left">
+      <span class="done-bar-title">Session Saved</span>
+      <span id="doneBarSummary" class="done-bar-summary"></span>
+    </div>
+    <div class="done-bar-right">
+      <span class="done-bar-path" onclick="copyPath()">
+        <code id="doneBarPath"></code>
+        <span class="copy-btn" id="copyBtn2">copy</span>
+      </span>
+      <button id="downloadBtn2" onclick="downloadZip()">ZIP</button>
+      <button id="newSessionBtn2" onclick="newSession()">New</button>
+    </div>
+  </div>
+
+  <div id="recHeader" class="rec-header">
     <div class="rec-header-left">
       <button id="stopBtn" onclick="stopSession()">Stop</button>
       <span class="rec-indicator">
@@ -529,6 +581,11 @@
   <div class="done-path" onclick="copyPath()">
     <span id="donePathText">/path/to/session</span>
     <span class="copy-btn" id="copyBtn">copy</span>
+  </div>
+  <div id="retroTicket" role="status" style="display:none; font-size:0.8rem; color:#ffb86b; background:#3a3015; border:1px solid #6b5a2a; border-radius:6px; padding:0.4rem 0.75rem; margin-bottom:0.5rem; align-items:center; gap:0.5rem;">
+    No ticket linked.
+    <input type="text" id="retroTicketId" placeholder="B-05" maxlength="20" autocomplete="off" style="background:#1a1a1a; border:1px solid #555; border-radius:4px; color:#e0e0e0; padding:0.2rem 0.4rem; font-size:0.8rem; width:80px;" />
+    <span style="color:#998050; font-size:0.75rem;">Link it (renames the ZIP)</span>
   </div>
   <div class="done-actions">
     <button id="downloadBtn" onclick="downloadZip()">Download ZIP</button>
@@ -602,8 +659,16 @@ function switchState(state) {
   $('recordingView').classList.remove('active');
   $('doneView').classList.remove('active');
   if (state === 'setup') $('setupView').classList.add('active');
-  else if (state === 'recording') $('recordingView').classList.add('active');
-  else if (state === 'done') $('doneView').classList.add('active');
+  else if (state === 'recording') {
+    $('recordingView').classList.add('active');
+    $('recHeader').style.display = '';
+    $('doneBar').style.display = 'none';
+  } else if (state === 'done') {
+    // Keep recording view visible (timeline stays), replace header with done bar
+    $('recordingView').classList.add('active');
+    $('recHeader').style.display = 'none';
+    $('doneBar').style.display = '';
+  }
 }
 
 function newSession() {
@@ -852,22 +917,22 @@ function updateStatusStrip() {
 
 // ── Clipboard copy ──
 function copyPath() {
-  const text = savedPath || $('donePathText').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = $('copyBtn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'copy'; }, 2000);
-  }).catch(() => {
-    // Fallback
+  const text = savedPath || '';
+  if (!text) return;
+  function showCopied() {
+    for (const id of ['copyBtn', 'copyBtn2']) {
+      const btn = $(id);
+      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'copy'; }, 2000); }
+    }
+  }
+  navigator.clipboard.writeText(text).then(showCopied).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = text;
     document.body.appendChild(ta);
     ta.select();
     document.execCommand('copy');
     document.body.removeChild(ta);
-    const btn = $('copyBtn');
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'copy'; }, 2000);
+    showCopied();
   });
 }
 
@@ -982,29 +1047,30 @@ async function captureScreenshot(clickPoint, boundingBox) {
   }
 
   // Skip near-duplicate frames (auto-captures only, not manual clicks)
-  if (!clickPoint && !boundingBox && lastFrameData) {
-    // Sample 4 regions across the frame to catch cursor movement anywhere
-    const regions = [
-      [0, 0], [w - 32, 0], [0, h - 32], [w - 32, h - 32], // corners
-      [Math.floor(w/2) - 16, Math.floor(h/2) - 16],        // center
-    ];
-    let totalDiff = 0;
-    let totalSamples = 0;
-    for (let r = 0; r < regions.length; r++) {
-      const rx = Math.max(0, Math.min(regions[r][0], w - 32));
-      const ry = Math.max(0, Math.min(regions[r][1], h - 32));
-      const check = ctx.getImageData(rx, ry, 32, 32);
-      const prev = lastFrameData[r];
-      if (!prev || prev.length !== check.data.length) { totalDiff = 999; break; }
-      for (let i = 0; i < check.data.length; i += 16) {
+  // But always save at least one frame every 5 seconds
+  const nowSec = (Date.now() - sessionStartTime) / 1000;
+  const lastShotTime = screenshots.length > 0 ? screenshots[screenshots.length - 1].timestamp : -999;
+  const forceCapture = (nowSec - lastShotTime) >= 5;
+
+  if (!clickPoint && !boundingBox && lastFrameData && !forceCapture) {
+    // Sample a wide horizontal strip from the middle of the frame (catches scrolling, cursor, content changes)
+    const stripY = Math.floor(h / 2) - 4;
+    const stripH = 8;
+    const check = ctx.getImageData(0, Math.max(0, stripY), w, stripH);
+    const prev = lastFrameData;
+    if (prev && prev.length === check.data.length) {
+      let totalDiff = 0;
+      let samples = 0;
+      // Sample every 64th pixel across the full width
+      for (let i = 0; i < check.data.length; i += 256) {
         totalDiff += Math.abs(check.data[i] - prev[i]);
-        totalSamples++;
+        samples++;
       }
-    }
-    if (totalSamples > 0 && totalDiff / totalSamples < 2) {
-      dedupCount++;
-      captureInProgress = false;
-      return; // frame hasn't changed enough
+      if (samples > 0 && totalDiff / samples < 3) {
+        dedupCount++;
+        captureInProgress = false;
+        return;
+      }
     }
   }
 
@@ -1018,16 +1084,9 @@ async function captureScreenshot(clickPoint, boundingBox) {
     log(`WARNING: screenshot #${screenshots.length + 1} is a BLACK FRAME (${w}x${h})`, 'error');
   }
 
-  // Store frame samples for dedup comparison (5 regions)
-  const regions = [
-    [0, 0], [w - 32, 0], [0, h - 32], [w - 32, h - 32],
-    [Math.floor(w/2) - 16, Math.floor(h/2) - 16],
-  ];
-  lastFrameData = regions.map(([rx, ry]) => {
-    const sx = Math.max(0, Math.min(rx, w - 32));
-    const sy = Math.max(0, Math.min(ry, h - 32));
-    return ctx.getImageData(sx, sy, 32, 32).data;
-  });
+  // Store frame strip for dedup comparison (full-width horizontal strip from middle)
+  const stripY = Math.floor(h / 2) - 4;
+  lastFrameData = ctx.getImageData(0, Math.max(0, stripY), w, 8).data;
 
   // Draw marker annotation
   let marker = null;
@@ -1392,10 +1451,16 @@ async function stopSession() {
   // Calculate duration
   const duration = (Date.now() - sessionStartTime) / 1000;
 
-  // Populate done view
+  // Populate done bar (replaces recording header, timeline stays)
+  const doneBarSummary = $('doneBarSummary');
+  if (doneBarSummary) doneBarSummary.textContent = `${screenshots.length} img, ${transcribedCount} stt, ${formatTime(duration)}`;
+
+  const doneBarPath = $('doneBarPath');
+  if (doneBarPath) doneBarPath.textContent = savedPath || 'ZIP ready';
+
+  // Also populate the standalone done view elements (for backward compat)
   const summary = $('doneSummary');
   if (summary) summary.textContent = `${screenshots.length} screenshots, ${transcribedCount} transcript chunks, ${formatTime(duration)} duration`;
-
   const pathText = $('donePathText');
   if (pathText) pathText.textContent = savedPath || 'ZIP ready for download';
 
@@ -1406,6 +1471,14 @@ async function stopSession() {
   }
 
   switchState('done');
+
+  // Show retroactive ticket prompt if no ticket was set
+  if (!($('ticketId') && $('ticketId').value.trim())) {
+    const retro = $('retroTicket');
+    if (retro) { retro.style.display = 'flex'; }
+    const retroInput = $('retroTicketId');
+    if (retroInput) retroInput.focus();
+  }
 }
 
 // ── Build markdown ──
@@ -1793,11 +1866,45 @@ if (savedApiKey && $('apiKey')) $('apiKey').value = savedApiKey;
 if ($('apiKey')) $('apiKey').addEventListener('change', () => {
   localStorage.setItem('feedbacks_api_key', $('apiKey').value);
 });
-const savedTicket = localStorage.getItem('feedbacks_ticket_id');
-if (savedTicket && $('ticketId')) $('ticketId').value = savedTicket;
+// Ticket ID: query param > localStorage
+const _urlTicket = new URLSearchParams(location.search).get('ticket');
+if (_urlTicket && $('ticketId')) {
+  $('ticketId').value = _urlTicket.trim().toUpperCase();
+  $('ticketId').readOnly = true;
+  showTicketBadge('From /review');
+} else {
+  const savedTicket = localStorage.getItem('feedbacks_ticket_id');
+  if (savedTicket && $('ticketId')) { $('ticketId').value = savedTicket; showTicketBadge('Linked'); }
+}
 if ($('ticketId')) $('ticketId').addEventListener('change', function() {
-  if (this.value.trim()) localStorage.setItem('feedbacks_ticket_id', this.value.trim());
-  else localStorage.removeItem('feedbacks_ticket_id');
+  const val = this.value.trim().toUpperCase();
+  this.value = val;
+  if (val) { localStorage.setItem('feedbacks_ticket_id', val); showTicketBadge('Linked'); }
+  else { localStorage.removeItem('feedbacks_ticket_id'); showTicketBadge(''); }
+});
+
+function showTicketBadge(text) {
+  const id = $('ticketId') ? $('ticketId').value.trim() : '';
+  const badge = $('ticketBadge');
+  if (badge) { badge.textContent = text; badge.style.display = id ? '' : 'none'; }
+  const clear = $('ticketClear');
+  if (clear) { clear.style.display = id ? '' : 'none'; }
+}
+function clearTicketId() {
+  if ($('ticketId')) { $('ticketId').value = ''; $('ticketId').readOnly = false; }
+  localStorage.removeItem('feedbacks_ticket_id');
+  showTicketBadge('');
+}
+// Retroactive ticket linking (after session ends without a ticket)
+if ($('retroTicketId')) $('retroTicketId').addEventListener('change', function() {
+  const val = this.value.trim().toUpperCase();
+  if (val && $('ticketId')) {
+    $('ticketId').value = val;
+    localStorage.setItem('feedbacks_ticket_id', val);
+    showTicketBadge('Linked');
+    if ($('retroTicket')) $('retroTicket').style.display = 'none';
+    log(`Ticket ${val} linked retroactively`);
+  }
 });
 </script>
 </body>
