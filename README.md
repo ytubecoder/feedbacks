@@ -1,123 +1,121 @@
 # Feedbacks
 
-Point-and-talk feedback capture for AI analysis. Share your screen, click on things, say what you think — get structured analysis back from Claude.
+Point-and-talk feedback capture for AI analysis. Share your screen, narrate what you see, and get structured output for LLM ingestion.
 
 ## What is this?
 
-Feedbacks is a browser-based tool that lets you give visual + verbal feedback on any application. You share your screen, click or drag to mark areas of interest, and narrate your thoughts out loud. The tool captures annotated screenshots (with numbered markers showing where you clicked) and transcribes your voice in real-time using a local speech-to-text engine.
+Feedbacks captures your screen and voice simultaneously while you browse a web app. You talk naturally — "this button looks off", "when I scroll here the layout breaks" — and the tool records timestamped screenshots with your cursor position alongside a transcript of what you said.
 
-The output is a lightweight ZIP containing a markdown document with your annotated screenshots and timestamped transcript — ready for AI analysis via the included Claude Code skill.
+The output is a directory of images + markdown, designed to be consumed by an LLM agent that can see what you were pointing at and read what you were saying.
 
-## Why?
+## Quick Start
 
-Giving feedback on a UI is hard to do in text. You end up writing paragraphs like "the button in the top-right corner of the settings panel, no the other one, the blue one..." when you could just *point at it and say what you mean*.
-
-This tool captures pointing + speaking together, so an AI can understand exactly what you're referring to when you say "make this red" or "this area needs work."
-
-## Privacy — not creepy, here's why
-
-This tool captures your screen and microphone. That sounds invasive, so here's exactly what happens to your data:
-
-- **Everything runs locally.** The web app runs on `localhost`. Speech-to-text runs on your machine via [whisper.cpp](https://github.com/ggerganov/whisper.cpp). Nothing is sent to any server unless you explicitly choose the OpenAI cloud fallback.
-- **Audio is never saved.** Voice is transcribed in 10-second chunks during the session, then discarded. The output ZIP contains only text and screenshots — no audio files.
-- **Screenshots stay on your machine.** They go into a ZIP on your local filesystem. You choose when and where to share them.
-- **No analytics, no telemetry, no accounts.** The app is a single HTML file with zero tracking.
-- **You control the screen share.** The browser's native screen share picker lets you choose exactly which window or tab to share. You can stop sharing at any time.
-- **The source is vanilla JS in a single HTML file.** Read it yourself. There's nothing hidden.
-
-If you use the OpenAI Whisper API fallback (optional, for users who don't want to set up local whisper), audio chunks are sent to OpenAI's servers for transcription. This is the only case where data leaves your machine, and it's opt-in.
-
-## Install
-
-### With Claude Code (recommended)
-
-Clone this repo, then run `/feedbacks` from the project directory. The skill auto-detects what to do:
-
-```
-/feedbacks          # first run → builds whisper.cpp, downloads model
-/feedbacks          # next run → starts the capture app
-/feedbacks          # after a session → analyzes your latest capture
-```
-
-You can also be explicit:
-
-```
-/feedbacks setup
-/feedbacks start
-/feedbacks analyze
-```
-
-To make `/feedbacks` available from any project, copy the skill to your global Claude config:
-
-```bash
-cp -r .claude/skills/feedbacks ~/.claude/skills/
-```
-
-### Manual setup
-
-**Prerequisites:** Python 3, CMake, C/C++ compiler, curl
-
-```bash
-# 1. Clone
-git clone https://github.com/anthropics/feedbacks.git
-cd feedbacks
-
-# 2. Build whisper.cpp
-git clone https://github.com/ggerganov/whisper.cpp
-cd whisper.cpp && cmake -B build && cmake --build build -j --config Release && cd ..
-
-# 3. Download a speech-to-text model
-sh whisper.cpp/models/download-ggml-model.sh small.en
-
-# 4. Launch (starts whisper + app server automatically)
-python3 server.py
-```
-
-Open **http://localhost:8080** in Chrome. Press Ctrl+C to stop both servers.
-
-`server.py` auto-detects whisper binary and model, starts it, and provides a WebM→WAV transcription proxy. If whisper.cpp isn't installed, it attempts to clone and build it automatically.
-
-### No-install cloud mode
-
-Open `http://localhost:8080` and enter an OpenAI API key for transcription (~$0.006/min). No whisper.cpp needed — but audio is sent to OpenAI's servers.
-
-## Usage
-
-1. Click **Start Session** — grant screen share + microphone
-2. **Switch to the tab/window** you want to give feedback on
-3. **Talk and point** — move your cursor to areas of interest as you narrate. Screenshots auto-capture every second when the screen changes (cursor movement counts).
-4. Go back to the feedbacks tab and click **Stop**
-5. Session auto-saves to disk. **Copy the path** or **Download ZIP**.
-
-### What you get
-
-```
-sessions/feedbacks-2026-03-31-12-07-32/
-├── session.md          # timestamped transcript with screenshot refs
-├── player.html         # self-contained slideshow player
-├── debug.log           # capture diagnostics
-└── images/
-    ├── 001.png         # auto-captured screenshot (cursor visible)
-    ├── 002.png
-    └── ...
-```
-
-Example `session.md`:
-
-```markdown
-## 0:12 - 0:25
-![Screenshot 2](./images/002.png)
-
-> When I click on settings here, it takes a while to load and the spinner is barely visible...
-```
-
-### Analyze with Claude Code
+### One command (with Claude Code)
 
 ```
 /feedbacks
 ```
 
-Claude reads each annotated screenshot, sees where you clicked, matches your markers to what you were saying ("this" → Marker 3), and provides structured feedback with action items.
+First run installs whisper.cpp and downloads a model. Subsequent runs start the capture server. After a session, run `/feedbacks` again to analyze.
+
+To use from any project:
+```bash
+cp -r .claude/skills/feedbacks ~/.claude/skills/
+```
+
+### Manual install
+
+**Prerequisites:** Python 3, ffmpeg, CMake, C/C++ compiler, Chrome
+
+```bash
+git clone <this-repo>
+cd feedbacks
+
+# server.py handles everything — builds whisper.cpp, downloads model, starts servers
+python3 server.py
+```
+
+Open **http://localhost:8080** in Chrome. Press Ctrl+C to stop.
+
+That's it. `server.py` will:
+- Clone and build whisper.cpp if not present
+- Download `small.en` model if no model found
+- Start whisper-server on :8081
+- Start the app server on :8080 with auto-save and transcription proxy
+
+If whisper setup fails, the app still works — enter an OpenAI API key in the UI for cloud transcription.
+
+### Options
+
+```bash
+python3 server.py --port 8080 --whisper-port 8081  # custom ports
+python3 server.py --no-whisper                       # skip whisper, cloud-only
+FEEDBACKS_OUTPUT_DIR=./my-sessions python3 server.py # custom output directory
+```
+
+## Usage
+
+1. **Start Session** — grants screen share + microphone
+2. **Switch to the app** you want to review
+3. **Talk and point** — move your cursor to things as you narrate. Screenshots auto-capture every second when the screen changes.
+4. **Switch back** to the feedbacks tab and click **Stop**
+5. **Copy the path** to clipboard or download the ZIP
+
+Screenshots include your cursor position (baked in by the browser's screen capture API), so when you say "this area here" while pointing, the screenshot shows exactly where you meant.
+
+## Output Format
+
+Each session saves to `sessions/feedbacks-{timestamp}/`:
+
+```
+sessions/feedbacks-2026-03-31-12-07-32/
+├── session.md      # timestamped markdown — screenshots + transcript
+├── player.html     # self-contained slideshow (open in browser)
+├── debug.log       # capture diagnostics
+└── images/
+    ├── 001.png     # auto-captured screenshots (cursor visible)
+    ├── 002.png
+    └── ...
+```
+
+### session.md format
+
+```markdown
+# Feedback Session — 2026-03-31 12:07
+Ticket: FEAT-42
+
+## 0:05 - 0:15
+![Screenshot 2](./images/002.png)
+
+> The pricing cards look good but this button here seems misaligned with the others.
+
+## 0:15 - 0:22
+![Screenshot 5](./images/005.png)
+
+> When I hover over this, the tooltip doesn't appear fast enough.
+```
+
+Each section has a timestamp range, a screenshot, and the transcript of what the user was saying during that time window. Images are referenced by relative path.
+
+### For LLM agents
+
+The session output is designed for direct LLM consumption:
+
+- **session.md** is the primary artifact. Read it, then read the referenced images to see what the user was looking at.
+- **Timestamps** correlate screenshots to transcript. A screenshot at `0:15` with transcript "this button here" means the cursor in that image is pointing at "this button."
+- **Cursor position** is visible in every screenshot. When the user says "this" or "here", look at where the cursor is in the corresponding image.
+- **Ticket ID** (if set) appears on the first line after the header. Use it to link feedback to a specific feature or bug.
+- **debug.log** contains capture diagnostics — only needed if something seems wrong with the output.
+- **player.html** is for human review only. LLM agents should read session.md + images directly.
+
+### Analyze with Claude Code
+
+```
+/feedbacks analyze path/to/session
+/feedbacks                          # auto-finds latest session
+```
+
+The `/feedbacks` skill reads each screenshot, correlates cursor position with speech, and provides structured feedback with action items.
 
 ## Architecture
 
@@ -127,35 +125,49 @@ Browser (index.html)                    server.py (:8080)
 │ getDisplayMedia      │  POST /save   │ Save sessions     │
 │ VideoFrame API       │──────────────>│ to disk           │
 │ MediaRecorder        │               │                   │
-│ Auto-capture (1s)    │  POST /transcr│ WebM→WAV (ffmpeg) │
+│ Auto-capture (1s)    │ POST /transcr │ WebM→WAV (ffmpeg) │
 │ Dedup + timeline UI  │──────────────>│ → whisper (:8081) │
 │ JSZip                │  transcript   │                   │
 └─────────────────────┘<──────────────│ whisper-server    │
         │                              │ (auto-started)    │
-        │ auto-save / ZIP              └──────────────────┘
+        │ auto-save + optional ZIP     └──────────────────┘
         ▼
    sessions/feedbacks-{ts}/
    ├── session.md + images/
-   ├── player.html
-   └── debug.log
+   ├── player.html + debug.log
         │
         │ /feedbacks skill
         ▼
-   Claude Code analysis
+   LLM agent analysis
 ```
 
-No database. No accounts. Single HTML file + Python server.
+**Key technical details:**
+- `VideoFrame` API captures actual pixels from the screen share stream (canvas.drawImage produces black frames on Chrome)
+- Screenshots dedup via horizontal strip comparison — static pages don't generate duplicate images
+- Force-capture every 5s ensures minimum coverage even on static pages
+- Audio recorded as WebM/Opus, converted to WAV server-side via ffmpeg (whisper.cpp doesn't accept WebM)
+- Transcription uses `initial_prompt` with previous context for continuity between 10s chunks
 
-## Model recommendations
+## Whisper Models
 
-| Model | Size | Speed (CPU) | Accuracy |
-|-------|------|-------------|----------|
-| `tiny.en` | 75MB | Very fast | Good enough for testing |
-| `base.en` | 150MB | Fast | Good for testing |
-| `small.en` | 500MB | Moderate | **Recommended** — good accuracy |
+| Model | Size | Speed | Accuracy |
+|-------|------|-------|----------|
+| `tiny.en` | 75MB | Very fast | Testing only |
+| `base.en` | 150MB | Fast | Acceptable |
+| **`small.en`** | **500MB** | **Moderate** | **Recommended** |
 | `medium.en` | 1.5GB | Slow | High accuracy |
 
-`.en` variants are English-only — faster and smaller than multilingual models.
+`server.py` prefers `small.en` if available. Download others with:
+```bash
+sh whisper.cpp/models/download-ggml-model.sh <model-name>
+```
+
+## Privacy
+
+- Everything runs locally. No data leaves your machine unless you opt into OpenAI cloud transcription.
+- Audio is transcribed in 10-second chunks then discarded. No audio files in the output.
+- Screenshots stay on your local filesystem. You choose when to share them.
+- No analytics, telemetry, or accounts.
 
 ## License
 
