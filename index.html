@@ -260,6 +260,10 @@
   </div>
   <label>OpenAI Key (fallback):</label>
   <input type="password" id="apiKey" placeholder="sk-..." />
+  <label>Ticket ID (optional):</label>
+  <input type="text" id="ticketId" placeholder="B-05" style="width:80px" maxlength="20" autocomplete="off" spellcheck="false" />
+  <span id="ticketBadge" aria-live="polite" style="display:none; font-size:0.75rem; color:#60a5fa; padding:0.2rem 0.5rem; border-radius:4px; background:#0d1f35; border:1px solid #1a3a60;"></span>
+  <button id="ticketClear" aria-label="Clear ticket ID" style="display:none; background:none; border:none; color:#666; font-size:1rem; cursor:pointer; padding:0 0.25rem;" onclick="clearTicketId()">×</button>
 </div>
 
 <div class="controls">
@@ -283,12 +287,20 @@
   <video id="preview" autoplay muted playsinline style="display:none"></video>
   <div class="click-hint" id="clickHint" style="display:none">Click to mark a point · Drag to select a region</div>
   <div class="capture-flash" id="flash"></div>
+  <div id="diagOverlay" style="display:none; position:absolute; top:8px; right:8px;
+    background:rgba(0,0,0,0.85); color:#0f0; font-family:monospace; font-size:11px;
+    padding:6px 10px; border-radius:4px; pointer-events:none; z-index:10;"></div>
 </div>
 
 <p class="hotkey-hint">
   Custom hotkey capture: coming soon
 </p>
 
+<div id="retroTicket" role="status" style="display:none; font-size:0.8rem; color:#ffb86b; background:#3a3015; border:1px solid #6b5a2a; border-radius:6px; padding:0.4rem 0.75rem; margin-bottom:0.5rem; align-items:center; gap:0.5rem;">
+  No ticket linked.
+  <input type="text" id="retroTicketId" placeholder="B-05" maxlength="20" autocomplete="off" style="background:#1a1a1a; border:1px solid #555; border-radius:4px; color:#e0e0e0; padding:0.2rem 0.4rem; font-size:0.8rem; width:80px;" />
+  <span style="color:#998050; font-size:0.75rem;">Link it (renames the ZIP)</span>
+</div>
 <div class="log" id="log"></div>
 
 <script>
@@ -302,6 +314,10 @@ let isRecording = false;
 let zipBlob = null;
 let markerCount = 0;
 let dragStart = null;
+
+// Diagnostic mode
+let diagnosticMode = new URLSearchParams(location.search).has('diag');
+let diagIntervalId = null;
 
 // Whisper connection state
 let whisperLocal = false;
@@ -339,6 +355,54 @@ $('apiKey').addEventListener('change', () => {
   localStorage.setItem('feedbacks_api_key', $('apiKey').value);
 });
 
+// ── Ticket ID ──
+function initTicketId() {
+  const param = new URLSearchParams(location.search).get('ticket');
+  if (param) {
+    $('ticketId').value = param.trim().toUpperCase();
+    $('ticketId').readOnly = true;
+    showTicketBadge('From /review');
+  } else {
+    const saved = localStorage.getItem('feedbacks_ticket_id');
+    if (saved) { $('ticketId').value = saved; showTicketBadge('Linked'); }
+  }
+}
+
+function showTicketBadge(text) {
+  const id = $('ticketId').value.trim();
+  const badge = $('ticketBadge');
+  badge.textContent = text;
+  badge.style.display = id ? '' : 'none';
+  $('ticketClear').style.display = id ? '' : 'none';
+}
+
+function clearTicketId() {
+  $('ticketId').value = '';
+  $('ticketId').readOnly = false;
+  localStorage.removeItem('feedbacks_ticket_id');
+  showTicketBadge('');
+}
+
+$('ticketId').addEventListener('change', function() {
+  const val = this.value.trim().toUpperCase();
+  this.value = val;
+  if (val) { localStorage.setItem('feedbacks_ticket_id', val); showTicketBadge('Linked'); }
+  else { localStorage.removeItem('feedbacks_ticket_id'); showTicketBadge(''); }
+});
+
+$('retroTicketId').addEventListener('change', function() {
+  const val = this.value.trim().toUpperCase();
+  if (val) {
+    $('ticketId').value = val;
+    localStorage.setItem('feedbacks_ticket_id', val);
+    showTicketBadge('Linked');
+    $('retroTicket').style.display = 'none';
+    log(`Ticket ${val} linked retroactively`);
+  }
+});
+
+initTicketId();
+
 // ── Whisper health check ──
 async function checkWhisper() {
   try {
@@ -367,11 +431,31 @@ function captureScreenshot(clickPoint, boundingBox) {
   if (!screenStream || !isRecording) return;
 
   const video = $('preview');
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+
+  if (w === 0 || h === 0) {
+    log(`Screenshot skipped: video dimensions ${w}x${h}`, 'error');
+    return;
+  }
+
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0);
+
+  // Detect black frame when diagnostic mode is on
+  if (diagnosticMode) {
+    const sample = ctx.getImageData(
+      Math.floor(w / 4), Math.floor(h / 4),
+      Math.min(32, w), Math.min(32, h)
+    );
+    const nonBlack = sample.data.some((v, i) => i % 4 !== 3 && v > 5);
+    if (!nonBlack) {
+      log(`Warning: screenshot #${screenshots.length + 1} appears to be a black frame`, 'error');
+    }
+  }
 
   // Draw marker annotation
   let marker = null;
@@ -444,12 +528,16 @@ function drawSelectionBox(ctx, box, number, imageWidth) {
 // ── Chunked audio transcription ──
 function startChunkRecording(micStream) {
   const mimeType = getSupportedMimeType();
+  log(`Audio recording: ${mimeType}, tracks: ${micStream.getAudioTracks().length}, active: ${micStream.active}`, 'info');
   chunkAudioParts = [];
   chunkStartTime = (Date.now() - sessionStartTime) / 1000;
 
   chunkRecorder = new MediaRecorder(micStream, { mimeType });
   chunkRecorder.ondataavailable = e => {
     if (e.data.size > 0) chunkAudioParts.push(e.data);
+  };
+  chunkRecorder.onerror = (e) => {
+    log(`Audio recorder error: ${e.error?.name || 'unknown'}`, 'error');
   };
   chunkRecorder.start(1000);
 }
@@ -605,13 +693,36 @@ async function startSession() {
       $('duration').textContent = formatTime(elapsed);
     }, 500);
 
-    // Take initial screenshot after video frame renders
-    setTimeout(captureScreenshot, 500);
+    // Take initial screenshot once video dimensions are known
+    const onVideoReady = () => {
+      video.removeEventListener('loadedmetadata', onVideoReady);
+      log(`Video ready: ${video.videoWidth}x${video.videoHeight}`, 'info');
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            captureScreenshot();
+          });
+        });
+      } else {
+        log('Warning: video dimensions still 0 after loadedmetadata', 'error');
+      }
+    };
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      onVideoReady();
+    } else {
+      video.addEventListener('loadedmetadata', onVideoReady);
+    }
 
     // Handle screen share ending
     screenStream.getVideoTracks()[0].onended = () => {
       if (isRecording) stopSession();
     };
+
+    // Start diagnostic overlay if enabled
+    if (diagnosticMode) {
+      diagIntervalId = setInterval(updateDiagOverlay, 1000);
+      updateDiagOverlay();
+    }
 
     // Update UI
     $('startBtn').disabled = true;
@@ -628,10 +739,11 @@ async function startSession() {
 // ── Stop session ──
 async function stopSession() {
   if (!isRecording) return;
-  isRecording = false;
 
-  // Take final screenshot
+  // Take final screenshot BEFORE clearing the recording flag
   captureScreenshot();
+
+  isRecording = false;
 
   // Stop chunk rotation
   clearInterval(chunkRotationId);
@@ -689,16 +801,33 @@ async function stopSession() {
   const markdown = buildMarkdown(transcriptSegments);
   zipBlob = await buildZip(markdown);
 
+  // Auto-save to server
+  const savedPath = await saveToServer(markdown);
+
   $('downloadBtn').disabled = false;
-  setStatus('done', 'Done');
-  $('placeholder').textContent = 'Done! Click "Download ZIP" to save.';
-  log('ZIP ready for download', 'success');
+  if (savedPath) {
+    setStatus('done', 'Saved');
+    $('placeholder').textContent = `Saved to: ${savedPath}`;
+    log(`Session saved to: ${savedPath}`, 'success');
+  } else {
+    setStatus('done', 'Done');
+    $('placeholder').textContent = 'Done! Click "Download ZIP" to save.';
+    log('ZIP ready for download (server save failed)', 'success');
+  }
+
+  if (!$('ticketId').value.trim()) {
+    $('retroTicket').style.display = 'flex';
+    $('retroTicketId').focus();
+  }
 }
 
 // ── Build markdown ──
 function buildMarkdown(segments) {
   const date = new Date(sessionStartTime).toISOString().slice(0, 16).replace('T', ' ');
-  let md = `# Feedback Session — ${date}\n\n`;
+  const ticketId = $('ticketId').value.trim();
+  let md = `# Feedback Session — ${date}\n`;
+  if (ticketId) md += `Ticket: ${ticketId}\n`;
+  md += '\n';
 
   if (screenshots.length === 0) {
     md += '> No screenshots captured.\n\n';
@@ -758,6 +887,7 @@ async function buildZip(markdown) {
   // Build session player
   const sessionData = {
     date: new Date(sessionStartTime).toISOString(),
+    ticketId: $('ticketId').value.trim() || null,
     slides: screenshots.map((shot, i) => {
       const nextShot = screenshots[i + 1];
       const startT = shot.timestamp;
@@ -781,6 +911,64 @@ async function buildZip(markdown) {
   const blob = await zip.generateAsync({ type: 'blob' });
   log(`ZIP size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
   return blob;
+}
+
+// ── Save session to server filesystem ──
+async function saveToServer(markdown) {
+  try {
+    const ts = new Date(sessionStartTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    const ticketId = $('ticketId').value.trim();
+    const name = ticketId ? `feedbacks-${ticketId}-${ts}` : `feedbacks-${ts}`;
+
+    // Build player HTML for saving
+    const sessionData = {
+      date: new Date(sessionStartTime).toISOString(),
+      ticketId: ticketId || null,
+      slides: screenshots.map((shot, i) => {
+        const nextShot = screenshots[i + 1];
+        const startT = shot.timestamp;
+        const endT = nextShot ? nextShot.timestamp : startT + 5;
+        const transcript = transcriptSegments
+          .filter(seg => seg.start < endT && seg.end > startT)
+          .map(seg => seg.text.trim())
+          .join(' ');
+        return {
+          image: shot.dataUrl,
+          timestamp: startT,
+          duration: endT - startT,
+          marker: shot.clickPoint || shot.boundingBox || null,
+          transcript
+        };
+      })
+    };
+
+    const payload = {
+      name,
+      markdown,
+      player: buildPlayerHtml(sessionData),
+      images: screenshots.map((shot, i) => ({
+        filename: `${String(i + 1).padStart(3, '0')}.png`,
+        base64: shot.dataUrl.split(',')[1]
+      }))
+    };
+
+    log('Saving to server...');
+    const resp = await fetch('/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      return result.path;
+    } else {
+      log(`Server save failed: ${result.error}`, 'error');
+      return null;
+    }
+  } catch (err) {
+    log(`Server save unavailable: ${err.message}`, 'error');
+    return null;
+  }
 }
 
 // ── Build self-contained player HTML ──
@@ -818,7 +1006,7 @@ select{background:#1a1a1a;color:#e0e0e0;border:1px solid #333;border-radius:6px;
 </head>
 <body>
 <h1>Feedbacks Player</h1>
-<p class="meta">${data.date.slice(0, 16).replace('T', ' ')}</p>
+<p class="meta">${data.date.slice(0, 16).replace('T', ' ')}${data.ticketId ? ' · Ticket: ' + data.ticketId : ''}</p>
 <div class="stage"><img id="slide" src="" alt="Screenshot"></div>
 <div class="marker-info" id="markerInfo"></div>
 <div class="transcript-box" id="transcript">Press play or use arrow keys</div>
@@ -968,8 +1156,10 @@ function downloadZip() {
   const url = URL.createObjectURL(zipBlob);
   const a = document.createElement('a');
   const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  const ticketId = $('ticketId').value.trim();
+  const prefix = ticketId ? `feedbacks-${ticketId}-` : 'feedbacks-';
   a.href = url;
-  a.download = `feedbacks-${ts}.zip`;
+  a.download = `${prefix}${ts}.zip`;
   a.click();
   URL.revokeObjectURL(url);
   log('Download started');
@@ -1039,11 +1229,46 @@ function getSupportedMimeType() {
   return 'audio/webm';
 }
 
+// ── Diagnostic mode ──
+function updateDiagOverlay() {
+  if (!diagnosticMode) return;
+  const video = $('preview');
+  const overlay = $('diagOverlay');
+  overlay.style.display = 'block';
+  const lines = [
+    `Video: ${video.videoWidth}x${video.videoHeight}`,
+    `readyState: ${video.readyState}`,
+    `Stream active: ${screenStream?.active ?? 'N/A'}`,
+    `Track: ${screenStream?.getVideoTracks()[0]?.readyState ?? 'N/A'}`,
+    `Screenshots: ${screenshots.length}`,
+    `Audio chunks: ${chunkCount}`,
+    `Mic active: ${micStreamRef?.active ?? 'N/A'}`,
+  ];
+  overlay.textContent = lines.join('\n');
+  overlay.style.whiteSpace = 'pre';
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+    diagnosticMode = !diagnosticMode;
+    if (diagnosticMode && isRecording) {
+      diagIntervalId = setInterval(updateDiagOverlay, 1000);
+      updateDiagOverlay();
+    } else {
+      clearInterval(diagIntervalId);
+      $('diagOverlay').style.display = 'none';
+    }
+    log(`Diagnostic mode: ${diagnosticMode ? 'ON' : 'OFF'}`, 'info');
+  }
+});
+
 function cleanup() {
   if (screenStream) screenStream.getTracks().forEach(t => t.stop());
   if (micStreamRef) micStreamRef.getTracks().forEach(t => t.stop());
   clearInterval(durationIntervalId);
   clearInterval(chunkRotationId);
+  clearInterval(diagIntervalId);
+  $('diagOverlay').style.display = 'none';
   isRecording = false;
   $('startBtn').disabled = false;
   $('stopBtn').disabled = true;
