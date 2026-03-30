@@ -15,79 +15,130 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+  }
+
+  /* ── Views ── */
+  .view { display: none; }
+  .view.active { display: flex; flex-direction: column; }
+
+  /* ── Setup View ── */
+  #setupView {
     align-items: center;
+    justify-content: center;
+    min-height: 100vh;
     padding: 2rem;
   }
 
-  h1 {
-    font-size: 1.5rem;
+  #setupView h1 {
+    font-size: 1.4rem;
     font-weight: 600;
-    margin-bottom: 0.25rem;
     color: #fff;
+    margin-bottom: 0.2rem;
   }
 
-  .subtitle {
-    font-size: 0.85rem;
-    color: #888;
+  #setupView .subtitle {
+    font-size: 0.8rem;
+    color: #555;
+    margin-bottom: 2rem;
+  }
+
+  .readiness-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    min-width: 300px;
     margin-bottom: 1.5rem;
   }
 
-  .config {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .config label {
-    font-size: 0.8rem;
-    color: #aaa;
-  }
-
-  .config input {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #e0e0e0;
-    padding: 0.4rem 0.6rem;
-    font-size: 0.85rem;
-    outline: none;
-  }
-
-  .config input:focus { border-color: #666; }
-
-  .config input[type="password"] { width: 260px; }
-
-  .whisper-status {
+  .check-row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    font-size: 0.8rem;
-    padding: 0.3rem 0.6rem;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    background: #111;
+    border: 1px solid #272727;
     border-radius: 6px;
-    background: #1a1a1a;
-    border: 1px solid #333;
   }
 
-  .whisper-dot {
+  .check-dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     background: #666;
+    flex-shrink: 0;
+  }
+  .check-dot.green { background: #4ade80; }
+  .check-dot.blue { background: #60a5fa; }
+  .check-dot.red { background: #f87171; }
+
+  .check-label {
+    font-size: 0.8rem;
+    color: #ccc;
+    flex: 1;
   }
 
-  .whisper-dot.local { background: #4ade80; }
-  .whisper-dot.cloud { background: #60a5fa; }
-  .whisper-dot.offline { background: #f87171; }
+  .check-value {
+    font-size: 0.7rem;
+    color: #888;
+  }
+  .check-value.green { color: #4ade80; }
+  .check-value.blue { color: #60a5fa; }
+  .check-value.red { color: #f87171; }
 
-  .controls {
+  /* Mic level bars */
+  .mic-bars {
     display: flex;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    align-items: center;
+    gap: 2px;
+    align-items: flex-end;
   }
+  .mic-bars.large { height: 14px; }
+  .mic-bars.mini { height: 10px; }
+  .mic-bar {
+    border-radius: 1px;
+    background: #333;
+    transition: height 0.08s ease-out;
+  }
+  .mic-bars.large .mic-bar { width: 3px; }
+  .mic-bars.mini .mic-bar { width: 2px; }
+  .mic-bar.active { background: #4ade80; }
+
+  #apiKeyRow {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  #apiKeyRow label { font-size: 0.75rem; color: #888; }
+  #apiKeyRow input {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 5px;
+    color: #e0e0e0;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    width: 240px;
+    outline: none;
+  }
+  #apiKeyRow input:focus { border-color: #666; }
+
+  .setup-config {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .setup-config input {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 5px;
+    color: #e0e0e0;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8rem;
+    width: 140px;
+    outline: none;
+  }
+  .setup-config input:focus { border-color: #666; }
 
   button {
     background: #222;
@@ -99,225 +150,412 @@
     cursor: pointer;
     transition: all 0.15s;
   }
-
   button:hover:not(:disabled) { background: #333; border-color: #666; }
   button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  button.primary {
+  #startBtn {
     background: #1a6b3c;
     border-color: #2a8b4c;
     color: #fff;
+    padding: 0.6rem 2rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  #startBtn:hover:not(:disabled) { background: #1f7d46; }
+
+  /* ── Recording View ── */
+  #recordingView {
+    min-height: 100vh;
   }
 
-  button.primary:hover:not(:disabled) { background: #1f7d46; }
+  .rec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #222;
+    background: #0d0d0d;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
 
-  button.danger {
+  .rec-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  #stopBtn {
     background: #6b1a1a;
-    border-color: #8b2a2a;
+    border: 1px solid #8b2a2a;
     color: #fff;
+    padding: 0.25rem 0.7rem;
+    border-radius: 5px;
+    font-size: 0.75rem;
+  }
+  #stopBtn:hover { background: #7d1f1f; }
+
+  .rec-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
   }
 
-  button.danger:hover:not(:disabled) { background: #7d1f1f; }
-
-  button.download {
-    background: #1a3c6b;
-    border-color: #2a4c8b;
-    color: #fff;
-  }
-
-  .status {
-    font-size: 0.8rem;
-    padding: 0.3rem 0.75rem;
-    border-radius: 12px;
-    background: #1a1a1a;
-    border: 1px solid #333;
-  }
-
-  .status.recording {
-    background: #3a1515;
-    border-color: #6b2a2a;
-    color: #ff6b6b;
+  .rec-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #ff4444;
     animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  .status.processing {
-    background: #3a3015;
-    border-color: #6b5a2a;
-    color: #ffb86b;
-  }
-
-  .status.done {
-    background: #153a1f;
-    border-color: #2a6b3a;
-    color: #6bff8b;
   }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
+    50% { opacity: 0.4; }
   }
 
-  .preview-container {
-    position: relative;
-    width: 100%;
-    max-width: 900px;
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 10px;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    aspect-ratio: 16/9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .preview-container video {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  .preview-placeholder {
-    color: #555;
-    font-size: 0.9rem;
-    text-align: center;
-    line-height: 1.6;
-  }
-
-  .preview-container .click-hint {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+  #recTime {
     font-size: 0.75rem;
-    color: #888;
-    background: rgba(0,0,0,0.7);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    pointer-events: none;
+    color: #ff6b6b;
+    font-weight: 500;
+    font-family: monospace;
   }
 
-  .capture-flash {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0.15);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-
-  .capture-flash.active {
-    opacity: 1;
-    transition: none;
-  }
-
-  .stats {
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 1rem;
+  .rec-header-right {
     display: flex;
-    gap: 1.5rem;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+    color: #666;
   }
 
-  .stats span { color: #bbb; }
+  /* Status strip */
+  .status-strip {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-bottom: 1px solid #1a1a1a;
+    background: #0a0a0a;
+    flex-wrap: wrap;
+    align-items: center;
+  }
 
-  .log {
-    width: 100%;
-    max-width: 900px;
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 3px;
+    background: #151515;
+    border: 1px solid #252525;
+    color: #888;
+  }
+  .status-pill .pill-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-pill.green { color: #4ade80; border-color: #1a3a1a; }
+  .status-pill.green .pill-dot { background: #4ade80; }
+  .status-pill.blue { color: #58a6ff; border-color: #1a2a4a; }
+  .status-pill.blue .pill-dot { background: #58a6ff; }
+  .status-pill.red { color: #f87171; border-color: #3a1a1a; }
+  .status-pill.red .pill-dot { background: #f87171; }
+  .status-pill.gray { color: #666; border-color: #222; }
+  .status-pill.gray .pill-dot { background: #666; }
+
+  /* Timeline feed */
+  .timeline-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .tl-entry {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #151515;
+    align-items: flex-start;
+  }
+
+  .tl-time {
+    color: #555;
+    font-family: monospace;
+    font-size: 0.65rem;
+    min-width: 32px;
+    padding-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .tl-badge {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .tl-badge.img { background: #1a3a1a; color: #3fb950; border: 1px solid #2a5a2a; }
+  .tl-badge.stt { background: #1a2a4a; color: #58a6ff; border: 1px solid #2a4a6a; }
+
+  .tl-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tl-body img {
+    max-width: 180px;
+    max-height: 101px;
+    border: 1px solid #2a2a2a;
+    border-radius: 3px;
+    display: block;
+  }
+
+  .tl-body .tl-text {
+    font-size: 0.75rem;
+    color: #bbb;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .tl-entry.pending { opacity: 0.4; }
+  .tl-entry.pending .tl-text { font-style: italic; color: #555; }
+
+  /* Diagnostics */
+  .diagnostics {
+    border-top: 1px solid #1a1a1a;
+    padding: 0.3rem 0.75rem;
+    background: #0a0a0a;
+  }
+  .diagnostics summary {
+    cursor: pointer;
+    color: #555;
+    font-size: 0.7rem;
+  }
+  .diagnostics .diag-summary {
+    padding: 0.3rem 0;
+    color: #444;
+    font-family: monospace;
+    font-size: 0.65rem;
+  }
+  .diagnostics .log {
     max-height: 150px;
     overflow-y: auto;
-    background: #111;
-    border: 1px solid #272727;
-    border-radius: 8px;
-    padding: 0.5rem 0.75rem;
     font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.75rem;
-    color: #777;
+    font-size: 0.7rem;
+    color: #555;
     line-height: 1.5;
+    padding-top: 0.25rem;
+    border-top: 1px solid #1a1a1a;
   }
-
   .log .error { color: #ff6b6b; }
   .log .success { color: #6bff8b; }
   .log .info { color: #6bb5ff; }
 
-  .hotkey-hint {
-    font-size: 0.75rem;
-    color: #555;
+  /* ── Done View ── */
+  #doneView {
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    text-align: center;
+  }
+
+  .done-heading {
+    font-size: 1.1rem;
+    color: #6bff8b;
+    margin-bottom: 0.3rem;
+  }
+
+  #doneSummary {
+    font-size: 0.8rem;
+    color: #888;
     margin-bottom: 1rem;
   }
+
+  .done-path {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #111;
+    border: 1px solid #272727;
+    border-radius: 6px;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 1.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .done-path:hover { border-color: #444; }
+
+  #donePathText {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #58a6ff;
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    font-size: 0.7rem;
+    color: #666;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 0.1rem 0.3rem;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { color: #aaa; border-color: #555; }
+
+  .done-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .done-actions button {
+    padding: 0.35rem 1rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+  }
+
+  #downloadBtn {
+    background: #1a3c6b;
+    border-color: #2a4c8b;
+    color: #fff;
+  }
+  #downloadBtn:hover { background: #234d80; }
+
+  #newSessionBtn {
+    background: #1a6b3c;
+    border-color: #2a8b4c;
+    color: #fff;
+  }
+  #newSessionBtn:hover { background: #1f7d46; }
+
+  /* Hidden capture video */
+  #captureVideo { display: none; }
 </style>
 </head>
 <body>
 
-<h1>Feedbacks</h1>
-<p class="subtitle">Screen + voice capture for AI feedback sessions</p>
+<!-- ═══ Setup View ═══ -->
+<div id="setupView" class="view active">
+  <h1>Feedbacks</h1>
+  <p class="subtitle">Screen + voice capture for AI feedback</p>
 
-<div class="config">
-  <div class="whisper-status">
-    <div class="whisper-dot" id="whisperDot"></div>
-    <span id="whisperLabel">Checking...</span>
+  <div class="readiness-checks">
+    <div class="check-row">
+      <div class="check-dot" id="sttDot"></div>
+      <span class="check-label">Speech-to-text</span>
+      <span class="check-value" id="sttValue">Checking...</span>
+    </div>
+    <div class="check-row">
+      <div class="check-dot" id="micDot"></div>
+      <span class="check-label">Microphone</span>
+      <div class="mic-bars large" id="micBarsSetup">
+        <div class="mic-bar" style="height:3px"></div>
+        <div class="mic-bar" style="height:3px"></div>
+        <div class="mic-bar" style="height:3px"></div>
+        <div class="mic-bar" style="height:3px"></div>
+        <div class="mic-bar" style="height:3px"></div>
+      </div>
+    </div>
   </div>
-  <label>OpenAI Key (fallback):</label>
-  <input type="password" id="apiKey" placeholder="sk-..." />
-  <label>Ticket ID (optional):</label>
-  <input type="text" id="ticketId" placeholder="B-05" style="width:80px" maxlength="20" autocomplete="off" spellcheck="false" />
-  <span id="ticketBadge" aria-live="polite" style="display:none; font-size:0.75rem; color:#60a5fa; padding:0.2rem 0.5rem; border-radius:4px; background:#0d1f35; border:1px solid #1a3a60;"></span>
-  <button id="ticketClear" aria-label="Clear ticket ID" style="display:none; background:none; border:none; color:#666; font-size:1rem; cursor:pointer; padding:0 0.25rem;" onclick="clearTicketId()">×</button>
-</div>
 
-<div class="controls">
-  <button id="startBtn" class="primary" onclick="startSession()">Start Session</button>
-  <button id="stopBtn" class="danger" onclick="stopSession()" disabled>Stop Session</button>
-  <button id="downloadBtn" class="download" onclick="downloadZip()" disabled>Download ZIP</button>
-  <span id="status" class="status">Idle</span>
-</div>
-
-<div class="stats">
-  <div>Screenshots: <span id="captureCount">0</span></div>
-  <div>Duration: <span id="duration">0:00</span></div>
-  <div>Transcribed: <span id="transcribeProgress">-</span></div>
-</div>
-
-<div class="preview-container" id="previewContainer">
-  <div class="preview-placeholder" id="placeholder">
-    Click "Start Session" to begin<br>
-    Screen share + microphone will be requested
+  <div id="apiKeyRow">
+    <label>OpenAI Key:</label>
+    <input type="password" id="apiKey" placeholder="sk-..." />
   </div>
-  <video id="preview" autoplay muted playsinline style="display:none"></video>
-  <div class="click-hint" id="clickHint" style="display:none">Click to mark a point · Drag to select a region</div>
-  <div class="capture-flash" id="flash"></div>
-  <div id="diagOverlay" style="display:none; position:absolute; top:8px; right:8px;
-    background:rgba(0,0,0,0.85); color:#0f0; font-family:monospace; font-size:11px;
-    padding:6px 10px; border-radius:4px; pointer-events:none; z-index:10;"></div>
+
+  <div class="setup-config">
+    <input type="text" id="ticketId" placeholder="Ticket ID (optional)" maxlength="20" autocomplete="off" spellcheck="false" />
+  </div>
+
+  <button id="startBtn" onclick="startSession()">Start Session</button>
 </div>
 
-<p class="hotkey-hint">
-  Custom hotkey capture: coming soon
-</p>
+<!-- ═══ Recording View ═══ -->
+<div id="recordingView" class="view">
+  <!-- Header -->
+  <div class="rec-header">
+    <div class="rec-header-left">
+      <button id="stopBtn" onclick="stopSession()">Stop</button>
+      <span class="rec-indicator">
+        <span class="rec-dot"></span>
+        <span id="recTime">0:00</span>
+      </span>
+      <div class="mic-bars mini" id="micBarsRec">
+        <div class="mic-bar" style="height:2px"></div>
+        <div class="mic-bar" style="height:2px"></div>
+        <div class="mic-bar" style="height:2px"></div>
+      </div>
+    </div>
+    <div class="rec-header-right">
+      <span id="headerImgCount">0 img</span>
+      <span id="headerSttCount">0/0 stt</span>
+    </div>
+  </div>
 
-<div id="retroTicket" role="status" style="display:none; font-size:0.8rem; color:#ffb86b; background:#3a3015; border:1px solid #6b5a2a; border-radius:6px; padding:0.4rem 0.75rem; margin-bottom:0.5rem; align-items:center; gap:0.5rem;">
-  No ticket linked.
-  <input type="text" id="retroTicketId" placeholder="B-05" maxlength="20" autocomplete="off" style="background:#1a1a1a; border:1px solid #555; border-radius:4px; color:#e0e0e0; padding:0.2rem 0.4rem; font-size:0.8rem; width:80px;" />
-  <span style="color:#998050; font-size:0.75rem;">Link it (renames the ZIP)</span>
+  <!-- Status strip -->
+  <div class="status-strip" id="statusStrip">
+    <span class="status-pill green"><span class="pill-dot"></span><span id="stripStt">STT local</span></span>
+    <span class="status-pill green"><span class="pill-dot"></span><span id="stripMic">Mic</span></span>
+    <span class="status-pill green"><span class="pill-dot"></span><span id="stripCapture">Capture --</span></span>
+    <span class="status-pill blue"><span class="pill-dot"></span><span id="stripImgCount">0 img</span></span>
+    <span class="status-pill blue"><span class="pill-dot"></span><span id="stripSttCount">0/0 stt</span></span>
+    <span class="status-pill gray"><span class="pill-dot"></span><span id="stripDedup">0 deduped</span></span>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline-feed" id="timelineFeed"></div>
+
+  <!-- Diagnostics -->
+  <div class="diagnostics">
+    <details>
+      <summary>Diagnostics</summary>
+      <div class="diag-summary" id="diagSummary">--</div>
+      <div class="log" id="log"></div>
+    </details>
+  </div>
 </div>
-<div class="log" id="log"></div>
+
+<!-- ═══ Done View ═══ -->
+<div id="doneView" class="view">
+  <div class="done-heading">Session Saved</div>
+  <div id="doneSummary">--</div>
+  <div class="done-path" onclick="copyPath()">
+    <span id="donePathText">/path/to/session</span>
+    <span class="copy-btn" id="copyBtn">copy</span>
+  </div>
+  <div class="done-actions">
+    <button id="downloadBtn" onclick="downloadZip()">Download ZIP</button>
+    <button id="newSessionBtn" onclick="newSession()">New Session</button>
+  </div>
+</div>
+
+<!-- Hidden video for getDisplayMedia -->
+<video id="captureVideo" autoplay muted playsinline></video>
 
 <script>
 // ── State ──
 let screenStream = null;
-let micStream = null;
 let screenshots = []; // { timestamp, dataUrl, clickPoint?, boundingBox? }
 let sessionStartTime = 0;
 let durationIntervalId = null;
+let screenshotIntervalId = null;
+let lastFrameData = null;
 let isRecording = false;
 let zipBlob = null;
-let markerCount = 0;
-let dragStart = null;
-
-// Diagnostic mode
-let diagnosticMode = new URLSearchParams(location.search).has('diag');
-let diagIntervalId = null;
+let captureInProgress = false;
+let dedupCount = 0;
+let statusStripIntervalId = null;
+let savedPath = '';
+let micAudioCtx = null;
+let micAnalyser = null;
+let micMeterRafId = null;
 
 // Whisper connection state
 let whisperLocal = false;
@@ -325,6 +563,7 @@ let whisperCheckId = null;
 const WHISPER_LOCAL_URL = 'http://localhost:8081';
 const WHISPER_CLOUD_URL = 'https://api.openai.com';
 const CHUNK_DURATION = 10000; // 10 seconds
+const CAPTURE_INTERVAL = 1000; // auto-screenshot every second, dedup filters unchanged frames
 
 // Chunked transcription state
 let chunkRecorder = null;
@@ -336,72 +575,301 @@ let transcribedCount = 0;
 let transcriptSegments = []; // { start, end, text } accumulated
 let pendingTranscriptions = []; // promises for in-flight transcriptions
 
+// Mic stream (may be started in setup for preview)
+let micStreamRef = null;
+
 // ── Elements ──
 const $ = id => document.getElementById(id);
 
 // ── Logging ──
+const logHistory = [];
 function log(msg, cls = '') {
+  const ts = new Date().toLocaleTimeString();
+  const entry = `[${ts}] ${msg}`;
+  logHistory.push(entry);
   const el = $('log');
+  if (!el) return;
   const line = document.createElement('div');
   if (cls) line.className = cls;
-  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  line.textContent = entry;
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
 }
 
-// ── Persist API key ──
-$('apiKey').value = localStorage.getItem('feedbacks_api_key') || '';
-$('apiKey').addEventListener('change', () => {
-  localStorage.setItem('feedbacks_api_key', $('apiKey').value);
-});
+// ── State machine ──
+function switchState(state) {
+  $('setupView').classList.remove('active');
+  $('recordingView').classList.remove('active');
+  $('doneView').classList.remove('active');
+  if (state === 'setup') $('setupView').classList.add('active');
+  else if (state === 'recording') $('recordingView').classList.add('active');
+  else if (state === 'done') $('doneView').classList.add('active');
+}
 
-// ── Ticket ID ──
-function initTicketId() {
-  const param = new URLSearchParams(location.search).get('ticket');
-  if (param) {
-    $('ticketId').value = param.trim().toUpperCase();
-    $('ticketId').readOnly = true;
-    showTicketBadge('From /review');
+function newSession() {
+  cleanup();
+  switchState('setup');
+  initMicPreview();
+}
+
+// ── Mic level meter ──
+function initMicPreview() {
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    window._previewMicStream = stream;
+    micStreamRef = stream;
+    $('micDot').className = 'check-dot green';
+    startMicMeter(stream);
+  }).catch(err => {
+    log('Mic access denied: ' + err.message, 'error');
+    $('micDot').className = 'check-dot red';
+  });
+}
+
+function startMicMeter(stream) {
+  if (micAudioCtx) micAudioCtx.close().catch(() => {});
+  micAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  micAnalyser = micAudioCtx.createAnalyser();
+  micAnalyser.fftSize = 64;
+  const source = micAudioCtx.createMediaStreamSource(stream);
+  source.connect(micAnalyser);
+
+  const dataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+
+  function animate() {
+    micMeterRafId = requestAnimationFrame(animate);
+    micAnalyser.getByteFrequencyData(dataArray);
+
+    // Update large bars (setup)
+    const setupBars = $('micBarsSetup');
+    if (setupBars) {
+      const bars = setupBars.querySelectorAll('.mic-bar');
+      const binCount = bars.length;
+      for (let i = 0; i < binCount; i++) {
+        const binIndex = Math.floor(i * dataArray.length / binCount);
+        const val = dataArray[binIndex] || 0;
+        const h = Math.max(3, Math.round(val / 255 * 14));
+        bars[i].style.height = h + 'px';
+        bars[i].className = 'mic-bar' + (val > 20 ? ' active' : '');
+      }
+    }
+
+    // Update mini bars (recording)
+    const recBars = $('micBarsRec');
+    if (recBars) {
+      const bars = recBars.querySelectorAll('.mic-bar');
+      const binCount = bars.length;
+      for (let i = 0; i < binCount; i++) {
+        const binIndex = Math.floor(i * dataArray.length / binCount);
+        const val = dataArray[binIndex] || 0;
+        const h = Math.max(2, Math.round(val / 255 * 10));
+        bars[i].style.height = h + 'px';
+        bars[i].className = 'mic-bar' + (val > 20 ? ' active' : '');
+      }
+    }
+  }
+  animate();
+}
+
+function stopMicMeter() {
+  if (micMeterRafId) cancelAnimationFrame(micMeterRafId);
+  micMeterRafId = null;
+  if (micAudioCtx) micAudioCtx.close().catch(() => {});
+  micAudioCtx = null;
+  micAnalyser = null;
+}
+
+// ── Timeline ──
+function insertTimelineEntry(type, timestamp, label, imgSrc) {
+  const feed = $('timelineFeed');
+  if (!feed) return;
+
+  const entry = document.createElement('div');
+  entry.className = 'tl-entry';
+  entry.dataset.timestamp = timestamp;
+
+  const time = document.createElement('span');
+  time.className = 'tl-time';
+  time.textContent = formatTime(timestamp);
+  entry.appendChild(time);
+
+  const badge = document.createElement('span');
+  badge.className = 'tl-badge ' + (type === 'img' ? 'img' : 'stt');
+  badge.textContent = type === 'img' ? 'IMG' : 'STT';
+  entry.appendChild(badge);
+
+  const body = document.createElement('div');
+  body.className = 'tl-body';
+
+  if (imgSrc) {
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    body.appendChild(img);
+  }
+  if (label) {
+    const text = document.createElement('span');
+    text.className = 'tl-text';
+    text.textContent = label;
+    body.appendChild(text);
+  }
+
+  entry.appendChild(body);
+
+  // Insert in sorted order by timestamp
+  const existing = feed.querySelectorAll('.tl-entry');
+  let inserted = false;
+  for (let i = existing.length - 1; i >= 0; i--) {
+    if (parseFloat(existing[i].dataset.timestamp) <= timestamp) {
+      existing[i].after(entry);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) feed.prepend(entry);
+
+  // Auto-scroll if near bottom
+  const isNearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100;
+  if (isNearBottom) feed.scrollTop = feed.scrollHeight;
+}
+
+function insertSTTPlaceholder(chunkNum, offsetTime) {
+  const feed = $('timelineFeed');
+  if (!feed) return;
+
+  const entry = document.createElement('div');
+  entry.className = 'tl-entry pending';
+  entry.dataset.timestamp = offsetTime;
+  entry.dataset.chunkNum = chunkNum;
+
+  const time = document.createElement('span');
+  time.className = 'tl-time';
+  time.textContent = formatTime(offsetTime);
+  entry.appendChild(time);
+
+  const badge = document.createElement('span');
+  badge.className = 'tl-badge stt';
+  badge.textContent = 'STT';
+  entry.appendChild(badge);
+
+  const body = document.createElement('div');
+  body.className = 'tl-body';
+  const text = document.createElement('span');
+  text.className = 'tl-text';
+  text.textContent = 'transcribing...';
+  body.appendChild(text);
+  entry.appendChild(body);
+
+  // Insert in sorted order
+  const existing = feed.querySelectorAll('.tl-entry');
+  let inserted = false;
+  for (let i = existing.length - 1; i >= 0; i--) {
+    if (parseFloat(existing[i].dataset.timestamp) <= offsetTime) {
+      existing[i].after(entry);
+      inserted = true;
+      break;
+    }
+  }
+  if (!inserted) feed.prepend(entry);
+
+  const isNearBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 100;
+  if (isNearBottom) feed.scrollTop = feed.scrollHeight;
+}
+
+function replaceSTTPlaceholder(chunkNum, transcriptText, offsetTime) {
+  const feed = $('timelineFeed');
+  if (!feed) return;
+
+  const placeholder = feed.querySelector(`.tl-entry[data-chunk-num="${chunkNum}"]`);
+  if (placeholder) {
+    placeholder.classList.remove('pending');
+    const textEl = placeholder.querySelector('.tl-text');
+    if (textEl) textEl.textContent = transcriptText || '(no speech detected)';
   } else {
-    const saved = localStorage.getItem('feedbacks_ticket_id');
-    if (saved) { $('ticketId').value = saved; showTicketBadge('Linked'); }
+    // No placeholder found, insert directly
+    insertTimelineEntry('stt', offsetTime, transcriptText || '(no speech detected)', null);
   }
 }
 
-function showTicketBadge(text) {
-  const id = $('ticketId').value.trim();
-  const badge = $('ticketBadge');
-  badge.textContent = text;
-  badge.style.display = id ? '' : 'none';
-  $('ticketClear').style.display = id ? '' : 'none';
-}
-
-function clearTicketId() {
-  $('ticketId').value = '';
-  $('ticketId').readOnly = false;
-  localStorage.removeItem('feedbacks_ticket_id');
-  showTicketBadge('');
-}
-
-$('ticketId').addEventListener('change', function() {
-  const val = this.value.trim().toUpperCase();
-  this.value = val;
-  if (val) { localStorage.setItem('feedbacks_ticket_id', val); showTicketBadge('Linked'); }
-  else { localStorage.removeItem('feedbacks_ticket_id'); showTicketBadge(''); }
-});
-
-$('retroTicketId').addEventListener('change', function() {
-  const val = this.value.trim().toUpperCase();
-  if (val) {
-    $('ticketId').value = val;
-    localStorage.setItem('feedbacks_ticket_id', val);
-    showTicketBadge('Linked');
-    $('retroTicket').style.display = 'none';
-    log(`Ticket ${val} linked retroactively`);
+// ── Status strip ──
+function updateStatusStrip() {
+  // STT
+  const sttPill = $('stripStt');
+  if (sttPill) {
+    if (whisperLocal) {
+      sttPill.textContent = 'STT local';
+      sttPill.parentElement.className = 'status-pill green';
+    } else if ($('apiKey') && $('apiKey').value.trim()) {
+      sttPill.textContent = 'STT cloud';
+      sttPill.parentElement.className = 'status-pill blue';
+    } else {
+      sttPill.textContent = 'STT off';
+      sttPill.parentElement.className = 'status-pill red';
+    }
   }
-});
 
-initTicketId();
+  // Mic
+  const micPill = $('stripMic');
+  if (micPill) {
+    const active = micStreamRef && micStreamRef.active;
+    micPill.textContent = active ? 'Mic' : 'Mic off';
+    micPill.parentElement.className = 'status-pill ' + (active ? 'green' : 'red');
+  }
+
+  // Capture resolution
+  const capPill = $('stripCapture');
+  if (capPill && screenStream) {
+    const track = screenStream.getVideoTracks()[0];
+    if (track && track.getSettings) {
+      const s = track.getSettings();
+      capPill.textContent = `Capture ${s.width || '--'}x${s.height || '--'}`;
+    }
+  }
+
+  // Counts
+  const imgCount = $('stripImgCount');
+  if (imgCount) imgCount.textContent = screenshots.length + ' img';
+
+  const sttCount = $('stripSttCount');
+  if (sttCount) sttCount.textContent = `${transcribedCount}/${chunkCount} stt`;
+
+  const dedupEl = $('stripDedup');
+  if (dedupEl) dedupEl.textContent = dedupCount + ' deduped';
+
+  // Header counts
+  const hImg = $('headerImgCount');
+  if (hImg) hImg.textContent = screenshots.length + ' img';
+  const hStt = $('headerSttCount');
+  if (hStt) hStt.textContent = `${transcribedCount}/${chunkCount} stt`;
+
+  // Diag summary
+  const diagSum = $('diagSummary');
+  if (diagSum) {
+    const video = $('captureVideo');
+    const w = video ? video.videoWidth : '--';
+    const h = video ? video.videoHeight : '--';
+    diagSum.textContent = `VideoFrame ${w}x${h} | Mic ${micStreamRef?.active ? 'active' : 'dead'} | Chunk ${chunkCount} | Dedup: ${dedupCount} skipped | Black: OK`;
+  }
+}
+
+// ── Clipboard copy ──
+function copyPath() {
+  const text = savedPath || $('donePathText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = $('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'copy'; }, 2000);
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = $('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'copy'; }, 2000);
+  });
+}
 
 // ── Whisper health check ──
 async function checkWhisper() {
@@ -409,63 +877,165 @@ async function checkWhisper() {
     const resp = await fetch(`${WHISPER_LOCAL_URL}/health`, { signal: AbortSignal.timeout(2000) });
     if (resp.ok) {
       whisperLocal = true;
-      $('whisperDot').className = 'whisper-dot local';
-      $('whisperLabel').textContent = 'Local';
-      $('apiKey').style.opacity = '0.4';
+      $('sttDot').className = 'check-dot green';
+      $('sttValue').textContent = 'Local (whisper.cpp)';
+      $('sttValue').className = 'check-value green';
+      if ($('apiKeyRow')) $('apiKeyRow').style.display = 'none';
       return;
     }
   } catch {}
   whisperLocal = false;
-  const hasKey = $('apiKey').value.trim().length > 0;
-  $('whisperDot').className = `whisper-dot ${hasKey ? 'cloud' : 'offline'}`;
-  $('whisperLabel').textContent = hasKey ? 'Cloud (OpenAI)' : 'No STT';
-  $('apiKey').style.opacity = '1';
+  const hasKey = $('apiKey') && $('apiKey').value.trim().length > 0;
+  $('sttDot').className = `check-dot ${hasKey ? 'blue' : 'red'}`;
+  $('sttValue').textContent = hasKey ? 'Cloud (OpenAI)' : 'No STT';
+  $('sttValue').className = `check-value ${hasKey ? 'blue' : 'red'}`;
+  if ($('apiKeyRow')) $('apiKeyRow').style.display = 'flex';
 }
 
-// Check on load and every 5 seconds
-checkWhisper();
-whisperCheckId = setInterval(checkWhisper, 5000);
+// ── Frame capture — tries multiple methods with timeout ──
+async function captureFrame() {
+  const track = screenStream.getVideoTracks()[0];
+
+  function withTimeout(promise, ms) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms))
+    ]);
+  }
+
+  // Method 1: MediaStreamTrackProcessor + VideoFrame (Chrome 94+)
+  if (typeof MediaStreamTrackProcessor !== 'undefined') {
+    try {
+      log('Trying VideoFrame capture...', 'info');
+      const processor = new MediaStreamTrackProcessor({ track });
+      const reader = processor.readable.getReader();
+      const { value: frame } = await withTimeout(reader.read(), 3000);
+      const canvas = document.createElement('canvas');
+      canvas.width = frame.displayWidth;
+      canvas.height = frame.displayHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(frame, 0, 0);
+      frame.close();
+      reader.cancel();
+      log(`Frame via VideoFrame: ${canvas.width}x${canvas.height}`, 'info');
+      return { canvas, ctx };
+    } catch (e) {
+      log(`VideoFrame failed: ${e.message}`, 'error');
+    }
+  }
+
+  // Method 2: ImageCapture.grabFrame() (Chrome 59+)
+  if (typeof ImageCapture !== 'undefined') {
+    try {
+      log('Trying ImageCapture...', 'info');
+      const capture = new ImageCapture(track);
+      const bitmap = await withTimeout(capture.grabFrame(), 3000);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      log(`Frame via ImageCapture: ${canvas.width}x${canvas.height}`, 'info');
+      return { canvas, ctx };
+    } catch (e) {
+      log(`ImageCapture failed: ${e.message}`, 'error');
+    }
+  }
+
+  // Method 3: Fallback to video element drawImage (may be black on some systems)
+  log('Trying drawImage fallback...', 'info');
+  const video = $('captureVideo');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  log(`Frame via drawImage: ${canvas.width}x${canvas.height}`, 'info');
+  return { canvas, ctx };
+}
 
 // ── Screenshot capture ──
-function captureScreenshot(clickPoint, boundingBox) {
+async function captureScreenshot(clickPoint, boundingBox) {
   if (!screenStream || !isRecording) return;
 
-  const video = $('preview');
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-
-  if (w === 0 || h === 0) {
-    log(`Screenshot skipped: video dimensions ${w}x${h}`, 'error');
+  const track = screenStream.getVideoTracks()[0];
+  if (!track || track.readyState !== 'live') {
+    log('Screenshot skipped: video track not live', 'error');
     return;
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
+  if (captureInProgress) {
+    log('Screenshot skipped: capture already in progress', 'info');
+    return;
+  }
+  captureInProgress = true;
 
-  // Detect black frame when diagnostic mode is on
-  if (diagnosticMode) {
-    const sample = ctx.getImageData(
-      Math.floor(w / 4), Math.floor(h / 4),
-      Math.min(32, w), Math.min(32, h)
-    );
-    const nonBlack = sample.data.some((v, i) => i % 4 !== 3 && v > 5);
-    if (!nonBlack) {
-      log(`Warning: screenshot #${screenshots.length + 1} appears to be a black frame`, 'error');
+  try {
+  const { canvas, ctx } = await captureFrame();
+  const w = canvas.width;
+  const h = canvas.height;
+
+  if (w === 0 || h === 0) {
+    log(`Screenshot skipped: frame dimensions ${w}x${h}`, 'error');
+    return;
+  }
+
+  // Skip near-duplicate frames (auto-captures only, not manual clicks)
+  if (!clickPoint && !boundingBox && lastFrameData) {
+    // Sample 4 regions across the frame to catch cursor movement anywhere
+    const regions = [
+      [0, 0], [w - 32, 0], [0, h - 32], [w - 32, h - 32], // corners
+      [Math.floor(w/2) - 16, Math.floor(h/2) - 16],        // center
+    ];
+    let totalDiff = 0;
+    let totalSamples = 0;
+    for (let r = 0; r < regions.length; r++) {
+      const rx = Math.max(0, Math.min(regions[r][0], w - 32));
+      const ry = Math.max(0, Math.min(regions[r][1], h - 32));
+      const check = ctx.getImageData(rx, ry, 32, 32);
+      const prev = lastFrameData[r];
+      if (!prev || prev.length !== check.data.length) { totalDiff = 999; break; }
+      for (let i = 0; i < check.data.length; i += 16) {
+        totalDiff += Math.abs(check.data[i] - prev[i]);
+        totalSamples++;
+      }
+    }
+    if (totalSamples > 0 && totalDiff / totalSamples < 2) {
+      dedupCount++;
+      captureInProgress = false;
+      return; // frame hasn't changed enough
     }
   }
+
+  // Always detect black frames
+  const sample = ctx.getImageData(
+    Math.floor(w / 4), Math.floor(h / 4),
+    Math.min(32, w), Math.min(32, h)
+  );
+  const nonBlack = sample.data.some((v, i) => i % 4 !== 3 && v > 5);
+  if (!nonBlack) {
+    log(`WARNING: screenshot #${screenshots.length + 1} is a BLACK FRAME (${w}x${h})`, 'error');
+  }
+
+  // Store frame samples for dedup comparison (5 regions)
+  const regions = [
+    [0, 0], [w - 32, 0], [0, h - 32], [w - 32, h - 32],
+    [Math.floor(w/2) - 16, Math.floor(h/2) - 16],
+  ];
+  lastFrameData = regions.map(([rx, ry]) => {
+    const sx = Math.max(0, Math.min(rx, w - 32));
+    const sy = Math.max(0, Math.min(ry, h - 32));
+    return ctx.getImageData(sx, sy, 32, 32).data;
+  });
 
   // Draw marker annotation
   let marker = null;
   if (clickPoint) {
-    markerCount++;
-    marker = markerCount;
+    marker = screenshots.length + 1;
     drawMarker(ctx, clickPoint.x, clickPoint.y, marker, canvas.width);
   } else if (boundingBox) {
-    markerCount++;
-    marker = markerCount;
+    marker = screenshots.length + 1;
     drawSelectionBox(ctx, boundingBox, marker, canvas.width);
   }
 
@@ -476,17 +1046,14 @@ function captureScreenshot(clickPoint, boundingBox) {
   if (boundingBox) shot.boundingBox = { ...boundingBox, marker };
   screenshots.push(shot);
 
-  $('captureCount').textContent = screenshots.length;
+  // Update timeline and status
+  insertTimelineEntry('img', elapsed, null, dataUrl);
+  updateStatusStrip();
 
-  // Flash effect
-  const flash = $('flash');
-  flash.classList.add('active');
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => flash.classList.remove('active'));
-  });
-
-  const label = clickPoint ? ` [Marker ${marker}]` : boundingBox ? ` [Selection ${marker}]` : '';
-  log(`Screenshot #${screenshots.length} at ${formatTime(elapsed)}${label}`);
+  log(`Screenshot #${screenshots.length} at ${formatTime(elapsed)}`);
+  } finally {
+    captureInProgress = false;
+  }
 }
 
 // ── Draw numbered circle marker ──
@@ -526,20 +1093,21 @@ function drawSelectionBox(ctx, box, number, imageWidth) {
 }
 
 // ── Chunked audio transcription ──
-function startChunkRecording(micStream) {
+function startChunkRecording(stream) {
   const mimeType = getSupportedMimeType();
-  log(`Audio recording: ${mimeType}, tracks: ${micStream.getAudioTracks().length}, active: ${micStream.active}`, 'info');
+  log(`Audio recording: ${mimeType}, tracks: ${stream.getAudioTracks().length}, active: ${stream.active}`, 'info');
   chunkAudioParts = [];
   chunkStartTime = (Date.now() - sessionStartTime) / 1000;
 
-  chunkRecorder = new MediaRecorder(micStream, { mimeType });
+  chunkRecorder = new MediaRecorder(stream, { mimeType });
   chunkRecorder.ondataavailable = e => {
     if (e.data.size > 0) chunkAudioParts.push(e.data);
   };
   chunkRecorder.onerror = (e) => {
     log(`Audio recorder error: ${e.error?.name || 'unknown'}`, 'error');
   };
-  chunkRecorder.start(1000);
+  // No timeslice — stop() triggers single ondataavailable with complete file
+  chunkRecorder.start();
 }
 
 function rotateChunk() {
@@ -550,6 +1118,9 @@ function rotateChunk() {
   chunkCount++;
   const chunkNum = chunkCount;
 
+  // Insert STT placeholder in timeline
+  insertSTTPlaceholder(chunkNum, startSnapshot);
+
   // Stop current recorder — triggers finalization
   chunkRecorder.stop();
   const finalizePromise = new Promise(resolve => {
@@ -559,7 +1130,7 @@ function rotateChunk() {
       const blob = new Blob(partsSnapshot, { type: mimeType });
 
       if (blob.size < 1000) {
-        log(`Chunk ${chunkNum} too small, skipping`, 'info');
+        log(`Chunk ${chunkNum} too small (${blob.size}B), skipping`, 'info');
         resolve();
         return;
       }
@@ -571,8 +1142,8 @@ function rotateChunk() {
   });
 
   // Start new chunk immediately
-  if (isRecording && micStream) {
-    startChunkRecording(micStream);
+  if (isRecording && micStreamRef) {
+    startChunkRecording(micStreamRef);
   }
 
   return finalizePromise;
@@ -581,7 +1152,7 @@ function rotateChunk() {
 async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
   const isLocal = whisperLocal;
   const baseUrl = isLocal ? WHISPER_LOCAL_URL : WHISPER_CLOUD_URL;
-  const apiKey = $('apiKey').value.trim();
+  const apiKey = $('apiKey') ? $('apiKey').value.trim() : '';
 
   if (!isLocal && !apiKey) {
     log(`Chunk ${chunkNum}: no STT available, skipping`, 'error');
@@ -590,21 +1161,34 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
       end: offsetTime + CHUNK_DURATION / 1000,
       text: '(No transcription available)'
     });
-    updateTranscribeProgress();
+    replaceSTTPlaceholder(chunkNum, '(No transcription available)', offsetTime);
+    updateStatusStrip();
     return;
   }
 
   const headers = {};
   if (!isLocal) headers['Authorization'] = `Bearer ${apiKey}`;
 
+  // Build context prompt from recent transcript for continuity
+  const recentText = transcriptSegments.slice(-5).map(s => s.text).join(' ').trim();
+  const prompt = recentText
+    ? `Feedback session on a web application. Previous: ${recentText.slice(-150)}`
+    : 'Feedback session on a web application. User is describing what they see on screen.';
+
   const formData = new FormData();
   formData.append('file', audioBlob, `chunk.${ext}`);
   formData.append('model', 'whisper-1');
   formData.append('response_format', 'verbose_json');
   formData.append('timestamp_granularities[]', 'segment');
+  formData.append('temperature', '0');
+  formData.append('prompt', prompt);
+
+  // Local whisper: use /transcribe proxy (converts WebM→WAV via ffmpeg)
+  // Cloud (OpenAI): hit API directly (accepts WebM natively)
+  const transcribeUrl = isLocal ? '/transcribe' : `${baseUrl}/v1/audio/transcriptions`;
 
   try {
-    const resp = await fetch(`${baseUrl}/v1/audio/transcriptions`, {
+    const resp = await fetch(transcribeUrl, {
       method: 'POST',
       headers,
       body: formData
@@ -628,7 +1212,9 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
     }
 
     transcribedCount++;
-    updateTranscribeProgress();
+    const transcriptText = segments.map(s => s.text).join(' ').trim();
+    replaceSTTPlaceholder(chunkNum, transcriptText, offsetTime);
+    updateStatusStrip();
     log(`Chunk ${chunkNum} transcribed (${segments.length} segments)`, 'success');
   } catch (err) {
     log(`Chunk ${chunkNum} failed: ${err.message}`, 'error');
@@ -638,17 +1224,12 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
       text: `(Chunk ${chunkNum} transcription failed)`
     });
     transcribedCount++;
-    updateTranscribeProgress();
+    replaceSTTPlaceholder(chunkNum, `(Chunk ${chunkNum} transcription failed)`, offsetTime);
+    updateStatusStrip();
   }
 }
 
-function updateTranscribeProgress() {
-  $('transcribeProgress').textContent = `${transcribedCount}/${chunkCount}`;
-}
-
 // ── Start session ──
-let micStreamRef = null;
-
 async function startSession() {
   try {
     log('Requesting screen share...', 'info');
@@ -657,19 +1238,21 @@ async function startSession() {
       audio: false
     });
 
-    log('Requesting microphone...', 'info');
-    micStreamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Reuse preview mic stream if active, otherwise request new one
+    if (window._previewMicStream && window._previewMicStream.active) {
+      micStreamRef = window._previewMicStream;
+      log('Reusing preview mic stream', 'info');
+    } else {
+      log('Requesting microphone...', 'info');
+      micStreamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
 
-    // Show preview
-    const video = $('preview');
+    // Set up hidden video for drawImage fallback
+    const video = $('captureVideo');
     video.srcObject = screenStream;
-    video.style.display = 'block';
-    $('placeholder').style.display = 'none';
-    $('clickHint').style.display = 'block';
 
     // Reset state
     screenshots = [];
-    markerCount = 0;
     transcriptSegments = [];
     pendingTranscriptions = [];
     chunkCount = 0;
@@ -677,34 +1260,51 @@ async function startSession() {
     sessionStartTime = Date.now();
     isRecording = true;
     zipBlob = null;
-    $('captureCount').textContent = '0';
-    $('transcribeProgress').textContent = '-';
-    $('downloadBtn').disabled = true;
+    lastFrameData = null;
+    dedupCount = 0;
+
+    // Clear timeline
+    const feed = $('timelineFeed');
+    if (feed) feed.textContent = '';
+
+    // Switch to recording view
+    switchState('recording');
+
+    // Start mic meter for recording view
+    startMicMeter(micStreamRef);
+
+    // Start status strip updates
+    statusStripIntervalId = setInterval(updateStatusStrip, 1000);
+    updateStatusStrip();
 
     // Start chunked audio recording
     startChunkRecording(micStreamRef);
 
-    // Rotate chunks every 10 seconds
+    // Rotate audio chunks every 10 seconds
     chunkRotationId = setInterval(rotateChunk, CHUNK_DURATION);
+
+    // Auto-capture screenshots every second
+    screenshotIntervalId = setInterval(() => {
+      captureScreenshot().catch(e => log(`Auto-capture failed: ${e.message}`, 'error'));
+    }, CAPTURE_INTERVAL);
 
     // Start duration timer
     durationIntervalId = setInterval(() => {
       const elapsed = (Date.now() - sessionStartTime) / 1000;
-      $('duration').textContent = formatTime(elapsed);
+      const el = $('recTime');
+      if (el) el.textContent = formatTime(elapsed);
     }, 500);
 
-    // Take initial screenshot once video dimensions are known
-    const onVideoReady = () => {
+    // Take initial screenshot once video is ready
+    const onVideoReady = async () => {
       video.removeEventListener('loadedmetadata', onVideoReady);
       log(`Video ready: ${video.videoWidth}x${video.videoHeight}`, 'info');
-      if (video.videoWidth > 0 && video.videoHeight > 0) {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            captureScreenshot();
-          });
-        });
-      } else {
-        log('Warning: video dimensions still 0 after loadedmetadata', 'error');
+      // Wait a beat for the stream to deliver its first frame
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        await captureScreenshot();
+      } catch (e) {
+        log(`Initial screenshot failed: ${e.message}`, 'error');
       }
     };
     if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -718,16 +1318,6 @@ async function startSession() {
       if (isRecording) stopSession();
     };
 
-    // Start diagnostic overlay if enabled
-    if (diagnosticMode) {
-      diagIntervalId = setInterval(updateDiagOverlay, 1000);
-      updateDiagOverlay();
-    }
-
-    // Update UI
-    $('startBtn').disabled = true;
-    $('stopBtn').disabled = false;
-    setStatus('recording', 'Recording');
     log('Session started', 'success');
 
   } catch (err) {
@@ -741,13 +1331,15 @@ async function stopSession() {
   if (!isRecording) return;
 
   // Take final screenshot BEFORE clearing the recording flag
-  captureScreenshot();
+  await captureScreenshot();
 
   isRecording = false;
 
   // Stop chunk rotation
   clearInterval(chunkRotationId);
   clearInterval(durationIntervalId);
+  clearInterval(screenshotIntervalId);
+  clearInterval(statusStripIntervalId);
 
   // Finalize the last chunk
   if (chunkRecorder && chunkRecorder.state === 'recording') {
@@ -755,6 +1347,9 @@ async function stopSession() {
     const startSnapshot = chunkStartTime;
     chunkCount++;
     const chunkNum = chunkCount;
+
+    // Insert placeholder for final chunk
+    insertSTTPlaceholder(chunkNum, startSnapshot);
 
     chunkRecorder.stop();
     await new Promise(resolve => {
@@ -776,19 +1371,9 @@ async function stopSession() {
 
   // Stop streams
   screenStream.getTracks().forEach(t => t.stop());
-  micStreamRef.getTracks().forEach(t => t.stop());
-
-  // Hide preview
-  $('preview').style.display = 'none';
-  $('clickHint').style.display = 'none';
-  $('placeholder').style.display = 'block';
-  $('placeholder').textContent = 'Waiting for transcription to finish...';
-
-  $('startBtn').disabled = false;
-  $('stopBtn').disabled = true;
+  // Don't stop mic — we might reuse it
 
   log(`Session stopped. ${screenshots.length} screenshots, ${chunkCount} audio chunks.`);
-  setStatus('processing', 'Processing...');
 
   // Wait for all pending transcriptions
   await Promise.allSettled(pendingTranscriptions);
@@ -802,29 +1387,31 @@ async function stopSession() {
   zipBlob = await buildZip(markdown);
 
   // Auto-save to server
-  const savedPath = await saveToServer(markdown);
+  savedPath = (await saveToServer(markdown)) || '';
 
-  $('downloadBtn').disabled = false;
+  // Calculate duration
+  const duration = (Date.now() - sessionStartTime) / 1000;
+
+  // Populate done view
+  const summary = $('doneSummary');
+  if (summary) summary.textContent = `${screenshots.length} screenshots, ${transcribedCount} transcript chunks, ${formatTime(duration)} duration`;
+
+  const pathText = $('donePathText');
+  if (pathText) pathText.textContent = savedPath || 'ZIP ready for download';
+
   if (savedPath) {
-    setStatus('done', 'Saved');
-    $('placeholder').textContent = `Saved to: ${savedPath}`;
     log(`Session saved to: ${savedPath}`, 'success');
   } else {
-    setStatus('done', 'Done');
-    $('placeholder').textContent = 'Done! Click "Download ZIP" to save.';
     log('ZIP ready for download (server save failed)', 'success');
   }
 
-  if (!$('ticketId').value.trim()) {
-    $('retroTicket').style.display = 'flex';
-    $('retroTicketId').focus();
-  }
+  switchState('done');
 }
 
 // ── Build markdown ──
 function buildMarkdown(segments) {
   const date = new Date(sessionStartTime).toISOString().slice(0, 16).replace('T', ' ');
-  const ticketId = $('ticketId').value.trim();
+  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
   let md = `# Feedback Session — ${date}\n`;
   if (ticketId) md += `Ticket: ${ticketId}\n`;
   md += '\n';
@@ -885,9 +1472,10 @@ async function buildZip(markdown) {
   }
 
   // Build session player
+  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
   const sessionData = {
     date: new Date(sessionStartTime).toISOString(),
-    ticketId: $('ticketId').value.trim() || null,
+    ticketId: ticketId || null,
     slides: screenshots.map((shot, i) => {
       const nextShot = screenshots[i + 1];
       const startT = shot.timestamp;
@@ -905,6 +1493,10 @@ async function buildZip(markdown) {
       };
     })
   };
+  // Validate player data
+  const firstImgLen = sessionData.slides[0]?.image?.length || 0;
+  log(`Player data: ${sessionData.slides.length} slides, first image: ${(firstImgLen/1024).toFixed(0)}KB`);
+
   zip.file('player.html', buildPlayerHtml(sessionData));
 
   log('Building ZIP...');
@@ -917,7 +1509,7 @@ async function buildZip(markdown) {
 async function saveToServer(markdown) {
   try {
     const ts = new Date(sessionStartTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
-    const ticketId = $('ticketId').value.trim();
+    const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
     const name = ticketId ? `feedbacks-${ticketId}-${ts}` : `feedbacks-${ts}`;
 
     // Build player HTML for saving
@@ -949,7 +1541,8 @@ async function saveToServer(markdown) {
       images: screenshots.map((shot, i) => ({
         filename: `${String(i + 1).padStart(3, '0')}.png`,
         base64: shot.dataUrl.split(',')[1]
-      }))
+      })),
+      log: logHistory.join('\n')
     };
 
     log('Saving to server...');
@@ -1156,7 +1749,7 @@ function downloadZip() {
   const url = URL.createObjectURL(zipBlob);
   const a = document.createElement('a');
   const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  const ticketId = $('ticketId').value.trim();
+  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
   const prefix = ticketId ? `feedbacks-${ticketId}-` : 'feedbacks-';
   a.href = url;
   a.download = `${prefix}${ts}.zip`;
@@ -1165,60 +1758,11 @@ function downloadZip() {
   log('Download started');
 }
 
-// ── Click / drag on preview to capture ──
-function mapToVideoCoords(e) {
-  const video = $('preview');
-  const rect = video.getBoundingClientRect();
-  const scaleX = video.videoWidth / rect.width;
-  const scaleY = video.videoHeight / rect.height;
-  return {
-    x: Math.round((e.clientX - rect.left) * scaleX),
-    y: Math.round((e.clientY - rect.top) * scaleY)
-  };
-}
-
-$('preview').addEventListener('mousedown', (e) => {
-  if (!isRecording) return;
-  e.preventDefault();
-  dragStart = mapToVideoCoords(e);
-});
-
-$('preview').addEventListener('mouseup', (e) => {
-  if (!isRecording || !dragStart) return;
-  const end = mapToVideoCoords(e);
-  const dx = Math.abs(end.x - dragStart.x);
-  const dy = Math.abs(end.y - dragStart.y);
-  const dragThreshold = 10;
-
-  if (dx > dragThreshold || dy > dragThreshold) {
-    const boundingBox = {
-      x1: Math.min(dragStart.x, end.x),
-      y1: Math.min(dragStart.y, end.y),
-      x2: Math.max(dragStart.x, end.x),
-      y2: Math.max(dragStart.y, end.y)
-    };
-    captureScreenshot(null, boundingBox);
-  } else {
-    captureScreenshot(dragStart, null);
-  }
-  dragStart = null;
-});
-
-// TODO: User-configurable hotkey capture
-// Planned: let users set their own key combo via a settings UI
-// Store in localStorage as { ctrl: bool, shift: bool, alt: bool, key: string }
-
 // ── Helpers ──
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function setStatus(cls, text) {
-  const el = $('status');
-  el.className = `status ${cls}`;
-  el.textContent = text;
 }
 
 function getSupportedMimeType() {
@@ -1229,51 +1773,32 @@ function getSupportedMimeType() {
   return 'audio/webm';
 }
 
-// ── Diagnostic mode ──
-function updateDiagOverlay() {
-  if (!diagnosticMode) return;
-  const video = $('preview');
-  const overlay = $('diagOverlay');
-  overlay.style.display = 'block';
-  const lines = [
-    `Video: ${video.videoWidth}x${video.videoHeight}`,
-    `readyState: ${video.readyState}`,
-    `Stream active: ${screenStream?.active ?? 'N/A'}`,
-    `Track: ${screenStream?.getVideoTracks()[0]?.readyState ?? 'N/A'}`,
-    `Screenshots: ${screenshots.length}`,
-    `Audio chunks: ${chunkCount}`,
-    `Mic active: ${micStreamRef?.active ?? 'N/A'}`,
-  ];
-  overlay.textContent = lines.join('\n');
-  overlay.style.whiteSpace = 'pre';
-}
-
-document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.shiftKey && e.key === 'D') {
-    diagnosticMode = !diagnosticMode;
-    if (diagnosticMode && isRecording) {
-      diagIntervalId = setInterval(updateDiagOverlay, 1000);
-      updateDiagOverlay();
-    } else {
-      clearInterval(diagIntervalId);
-      $('diagOverlay').style.display = 'none';
-    }
-    log(`Diagnostic mode: ${diagnosticMode ? 'ON' : 'OFF'}`, 'info');
-  }
-});
-
 function cleanup() {
   if (screenStream) screenStream.getTracks().forEach(t => t.stop());
   if (micStreamRef) micStreamRef.getTracks().forEach(t => t.stop());
   clearInterval(durationIntervalId);
   clearInterval(chunkRotationId);
-  clearInterval(diagIntervalId);
-  $('diagOverlay').style.display = 'none';
+  clearInterval(screenshotIntervalId);
+  clearInterval(statusStripIntervalId);
+  stopMicMeter();
   isRecording = false;
-  $('startBtn').disabled = false;
-  $('stopBtn').disabled = true;
-  setStatus('', 'Idle');
 }
+
+// ── Init ──
+checkWhisper();
+whisperCheckId = setInterval(checkWhisper, 5000);
+initMicPreview();
+const savedApiKey = localStorage.getItem('feedbacks_api_key');
+if (savedApiKey && $('apiKey')) $('apiKey').value = savedApiKey;
+if ($('apiKey')) $('apiKey').addEventListener('change', () => {
+  localStorage.setItem('feedbacks_api_key', $('apiKey').value);
+});
+const savedTicket = localStorage.getItem('feedbacks_ticket_id');
+if (savedTicket && $('ticketId')) $('ticketId').value = savedTicket;
+if ($('ticketId')) $('ticketId').addEventListener('change', function() {
+  if (this.value.trim()) localStorage.setItem('feedbacks_ticket_id', this.value.trim());
+  else localStorage.removeItem('feedbacks_ticket_id');
+});
 </script>
 </body>
 </html>
