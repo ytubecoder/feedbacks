@@ -8,6 +8,7 @@ set -e
 MODEL="${1:-models/ggml-base.bin}"
 WHISPER_PORT=8081
 APP_PORT=8080
+export FEEDBACKS_OUTPUT_DIR="${FEEDBACKS_OUTPUT_DIR:-$(dirname "$0")/sessions}"
 
 # Find whisper-server
 if command -v whisper-server &>/dev/null; then
@@ -57,9 +58,10 @@ echo "Starting whisper-server on :$WHISPER_PORT..."
 $WHISPER_CMD -m "$MODEL" --port $WHISPER_PORT --host 127.0.0.1 --inference-path "/v1/audio/transcriptions" &
 WHISPER_PID=$!
 
-# Start HTTP server for the app
+# Start app server (with save endpoint)
 echo "Starting app server on :$APP_PORT..."
-python3 -m http.server $APP_PORT --bind 127.0.0.1 &
+echo "Output directory: $FEEDBACKS_OUTPUT_DIR"
+python3 "$(dirname "$0")/server.py" --port $APP_PORT &
 HTTP_PID=$!
 
 # Wait for whisper to be ready
@@ -77,6 +79,7 @@ echo ""
 echo "================================"
 echo "  Feedbacks is running!"
 echo "  Open: http://localhost:$APP_PORT"
+echo "  Sessions save to: $FEEDBACKS_OUTPUT_DIR"
 echo "  Press Ctrl+C to stop"
 echo "================================"
 echo ""
