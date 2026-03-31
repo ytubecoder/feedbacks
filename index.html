@@ -8,466 +8,824 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* ── CSS custom properties (shadcn zinc dark + violet accent) ── */
+  :root {
+    --bg:            #09090b;
+    --card:          #0a0a0a;
+    --surface:       #18181b;
+    --surface-2:     #1c1c1f;
+    --border:        rgba(255,255,255,0.06);
+    --border-hover:  rgba(255,255,255,0.12);
+    --text:          #fafafa;
+    --text-muted:    #a1a1aa;
+    --text-dim:      #52525b;
+    --text-faint:    #3f3f46;
+    --accent:        #a78bfa;
+    --accent-dim:    rgba(167,139,250,0.1);
+    --accent-border: rgba(167,139,250,0.25);
+    --destructive:   #ef4444;
+    --success:       #4ade80;
+    --info:          #60a5fa;
+    --radius:        0.625rem;
+    --radius-sm:     0.375rem;
+    --ease-out:      cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    background: #0a0a0a;
-    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, Inter, 'Segoe UI', system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
 
-  /* ── Views ── */
-  .view { display: none; }
-  .view.active { display: flex; flex-direction: column; }
-
-  /* ── Setup View ── */
-  #setupView {
+  /* ── App Header ── */
+  #appHeader {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 2rem;
+    justify-content: space-between;
+    padding: 0 1rem;
+    height: 3rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(9,9,11,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 20;
   }
 
-  #setupView h1 {
-    font-size: 1.4rem;
+  .header-left { display: flex; align-items: center; gap: 0.5rem; }
+
+  #appHeader h1 {
+    font-size: 0.9375rem;
     font-weight: 600;
-    color: #fff;
-    margin-bottom: 0.2rem;
-  }
-
-  #setupView .subtitle {
-    font-size: 0.8rem;
-    color: #555;
-    margin-bottom: 2rem;
-  }
-
-  .readiness-checks {
-    display: flex;
-    flex-direction: column;
-    gap: 0.6rem;
-    min-width: 300px;
-    margin-bottom: 1.5rem;
-  }
-
-  .check-row {
+    color: var(--text);
+    letter-spacing: -0.025em;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.75rem;
-    background: #111;
-    border: 1px solid #272727;
-    border-radius: 6px;
+    gap: 0.375rem;
   }
-
-  .check-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #666;
+  #appHeader h1::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
     flex-shrink: 0;
   }
-  .check-dot.green { background: #4ade80; }
-  .check-dot.blue { background: #60a5fa; }
-  .check-dot.red { background: #f87171; }
 
-  .check-label {
-    font-size: 0.8rem;
-    color: #ccc;
-    flex: 1;
-  }
+  .header-right { display: flex; align-items: center; gap: 0.625rem; }
 
-  .check-value {
-    font-size: 0.7rem;
-    color: #888;
-  }
-  .check-value.green { color: #4ade80; }
-  .check-value.blue { color: #60a5fa; }
-  .check-value.red { color: #f87171; }
-
-  /* Mic level bars */
-  .mic-bars {
-    display: flex;
-    gap: 2px;
-    align-items: flex-end;
-  }
-  .mic-bars.large { height: 14px; }
-  .mic-bars.mini { height: 10px; }
-  .mic-bar {
-    border-radius: 1px;
-    background: #333;
-    transition: height 0.08s ease-out;
-  }
-  .mic-bars.large .mic-bar { width: 3px; }
-  .mic-bars.mini .mic-bar { width: 2px; }
-  .mic-bar.active { background: #4ade80; }
-
-  #apiKeyRow {
-    display: none;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  #apiKeyRow label { font-size: 0.75rem; color: #888; }
-  #apiKeyRow input {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 5px;
-    color: #e0e0e0;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.8rem;
-    width: 240px;
-    outline: none;
-  }
-  #apiKeyRow input:focus { border-color: #666; }
-
-  .setup-config {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 1.5rem;
-  }
-  .setup-config input {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 5px;
-    color: #e0e0e0;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.8rem;
-    width: 140px;
-    outline: none;
-  }
-  .setup-config input:focus { border-color: #666; }
-
-  button {
-    background: #222;
-    color: #e0e0e0;
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 0.5rem 1.25rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  button:hover:not(:disabled) { background: #333; border-color: #666; }
-  button:disabled { opacity: 0.35; cursor: not-allowed; }
-
-  #startBtn {
-    background: #1a6b3c;
-    border-color: #2a8b4c;
-    color: #fff;
-    padding: 0.6rem 2rem;
-    font-size: 0.95rem;
-    font-weight: 500;
-  }
-  #startBtn:hover:not(:disabled) { background: #1f7d46; }
-
-  /* ── Recording View ── */
-  #recordingView {
-    min-height: 100vh;
-  }
-
-  .done-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid #2a6b3a;
-    background: #0d1f0d;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-  .done-bar-left { display: flex; align-items: center; gap: 0.5rem; }
-  .done-bar-right { display: flex; align-items: center; gap: 0.4rem; }
-  .done-bar-title { font-size: 0.8rem; color: #6bff8b; font-weight: 600; }
-  .done-bar-summary { font-size: 0.7rem; color: #888; }
-  .done-bar-path {
-    display: inline-flex; align-items: center; gap: 0.3rem;
-    background: #111; border: 1px solid #272727; border-radius: 4px;
-    padding: 0.2rem 0.5rem; cursor: pointer; font-size: 0.65rem;
-  }
-  .done-bar-path:hover { border-color: #444; }
-  .done-bar-path code { color: #58a6ff; }
-  .done-bar-path .copy-btn {
-    color: #666; border: 1px solid #333; border-radius: 2px;
-    padding: 0 0.2rem; background: none; cursor: pointer; font-size: 0.6rem;
-  }
-  .done-bar button {
-    background: #1a3c6b; border: 1px solid #2a4c8b; color: #fff;
-    padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer;
-  }
-  .done-bar button:hover { background: #1f4a7d; }
-
-  .rec-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid #222;
-    background: #0d0d0d;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-
-  .rec-header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-  }
-
-  #stopBtn {
-    background: #6b1a1a;
-    border: 1px solid #8b2a2a;
-    color: #fff;
-    padding: 0.25rem 0.7rem;
-    border-radius: 5px;
-    font-size: 0.75rem;
-  }
-  #stopBtn:hover { background: #7d1f1f; }
-
-  .rec-indicator {
+  /* Status pill badges */
+  .header-status {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9999px;
+    padding: 0.1875rem 0.5rem;
+    transition: color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
   }
 
-  .rec-dot {
+  /* Header recording indicator */
+  #headerRecIndicator { display: none; align-items: center; gap: 0.4rem; }
+  #headerRecIndicator.active { display: inline-flex; }
+  #headerRecTime {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: #f87171;
+    font-variant-numeric: tabular-nums;
+  }
+  #headerStopBtn {
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #f87171;
+    padding: 0 0.75rem;
+    height: 1.875rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    transition: all 0.2s var(--ease-out);
+  }
+  #headerStopBtn:hover:not(:disabled) {
+    background: rgba(239,68,68,0.22);
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
+  }
+
+  /* Split button group */
+  .split-btn {
+    display: inline-flex;
+    align-items: stretch;
+  }
+  .split-btn #newCaptureBtn {
+    background: var(--accent);
+    border: 1px solid transparent;
+    color: #09090b;
+    padding: 0 0.75rem;
+    height: 1.875rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border-radius: 9999px 0 0 9999px;
+    letter-spacing: -0.01em;
+    transition: all 0.2s var(--ease-out);
+    box-shadow: 0 0 0 0 rgba(167,139,250,0);
+  }
+  .split-btn #newCaptureBtn:hover:not(:disabled) {
+    background: #c4b5fd;
+    box-shadow: 0 0 12px rgba(167,139,250,0.35);
+  }
+  .split-btn #newCaptureDropdown {
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-left: 1px solid rgba(9,9,11,0.2);
+    color: #09090b;
+    padding: 0 0.4rem;
+    height: 1.875rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 0 9999px 9999px 0;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-out);
+  }
+  .split-btn #newCaptureDropdown:hover:not(:disabled) {
+    background: #c4b5fd;
+  }
+
+  /* ── Capture Prompt ── */
+  #capturePrompt {
+    display: none;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent-border);
+    border-top: none;
+    align-items: center;
+    gap: 0.625rem;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  #capturePrompt.active { display: flex; }
+
+  .capture-prompt-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  #capturePrompt input {
+    background: var(--bg);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+    width: 180px;
+    outline: none;
+    height: 2rem;
+    font-family: inherit;
+    transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  }
+  #capturePrompt input::placeholder { color: var(--text-dim); }
+  #capturePrompt input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(167,139,250,0.2);
+  }
+
+  /* ── Session List ── */
+  #sessionList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* ── Empty State ── */
+  #emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    color: var(--text-dim);
+    padding: 5rem 1rem 4rem;
+    text-align: center;
+    flex: 1;
+  }
+  .empty-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: var(--text-faint);
+  }
+  .empty-title {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: -0.015em;
+  }
+  .empty-desc {
+    font-size: 0.8125rem;
+    color: var(--text-dim);
+    max-width: 260px;
+    line-height: 1.5;
+    margin-top: -0.25rem;
+  }
+  .empty-cta {
+    margin-top: 0.25rem;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    padding: 0 1rem;
+    height: 2rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border-radius: 9999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s var(--ease-out);
+    white-space: nowrap;
+  }
+  .empty-cta:hover { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.4); }
+
+  /* ── Session Row ── */
+  .session-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: opacity 0.2s var(--ease-out), border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
+  .session-row:not(.live):not(.dimmed):hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transform: translateY(-1px);
+  }
+  .session-row.dimmed { opacity: 0.22; pointer-events: none; }
+
+  .session-row-header {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0.875rem;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s var(--ease-out);
+  }
+  .session-row-header:hover { background: rgba(255,255,255,0.03); }
+  .session-row-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .row-hero {
+    width: 72px;
+    height: 48px;
+    object-fit: cover;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--bg);
+    transition: border-color 0.2s var(--ease-out);
+  }
+  .session-row-header:hover .row-hero { border-color: var(--border-hover); }
+
+  .row-hero-placeholder {
+    width: 72px;
+    height: 48px;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent; /* hide the '--' text from JS */
+    font-size: 0;
+    position: relative;
+  }
+  /* CSS-only image icon */
+  .row-hero-placeholder::after {
+    content: '';
+    width: 18px;
+    height: 14px;
+    border: 1.5px solid var(--text-faint);
+    border-radius: 2px;
+    position: absolute;
+    opacity: 0.5;
+  }
+
+  .row-info { flex: 1; min-width: 0; }
+  .row-info-line1 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+  }
+  .row-timestamp { color: var(--text); white-space: nowrap; }
+  .ticket-badge {
+    font-size: 0.625rem;
+    padding: 0.15rem 0.4rem;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+    border-radius: 9999px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .row-stats {
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+    margin-left: auto;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .row-info-line2 {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.75;
+  }
+  .row-chevron {
+    color: var(--text-faint);
+    font-size: 0.6875rem;
+    flex-shrink: 0;
+    transition: transform 0.2s var(--ease-out), color 0.2s var(--ease-out);
+  }
+  .session-row-header:hover .row-chevron { color: var(--text-dim); }
+  .session-row.expanded .row-chevron { transform: rotate(90deg); color: var(--accent); }
+
+  /* ── Session Row Expanded Detail ── */
+  .session-detail { display: none; border-top: 1px solid var(--border); background: var(--surface); }
+  .session-row.expanded .session-detail { display: block; }
+
+  .detail-summary {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-hero {
+    width: 240px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .detail-info { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+  .detail-summary-text {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    flex: 1;
+  }
+  .detail-path {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.625rem;
+    color: var(--text-dim);
+    word-break: break-all;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.375rem;
+  }
+  .detail-actions { display: flex; gap: 0.375rem; }
+  .detail-actions button {
+    font-size: 0.6875rem;
+    padding: 0 0.625rem;
+    height: 1.875rem;
+    background: transparent;
+    border-color: var(--border-hover);
+    color: var(--text-muted);
+  }
+  .detail-actions button:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text);
+  }
+  /* ── Detail Timeline (vertical spine) ── */
+  .detail-timeline {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 1rem 1rem 1rem 2.5rem;
+    position: relative;
+  }
+  .detail-timeline::before {
+    content: '';
+    position: absolute;
+    left: 1.25rem;
+    top: 1rem;
+    bottom: 1rem;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), rgba(167,139,250,0.08));
+    border-radius: 1px;
+  }
+  .detail-timeline .tl-entry {
+    position: relative;
+    padding: 0 0 1.25rem 0;
+    border-bottom: none;
+    display: block;
+  }
+  .detail-timeline .tl-entry:last-child { padding-bottom: 0; }
+  .detail-timeline .tl-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--bg);
+    position: absolute;
+    left: -1.65rem;
+    top: 0.25rem;
+    z-index: 1;
+    transition: background 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+  }
+  .detail-timeline .tl-entry:hover .tl-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .detail-timeline .tl-timestamp {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.6875rem;
+    color: var(--text-faint);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.02em;
+  }
+  .detail-timeline .tl-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  .detail-timeline .tl-screenshot {
+    width: 260px;
+    height: auto;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+    cursor: pointer;
+  }
+  .detail-timeline .tl-screenshot:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    border-color: var(--border-hover);
+  }
+  .detail-timeline .tl-transcript {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    padding-top: 0.125rem;
+    font-style: italic;
+    flex: 1;
+    min-width: 0;
+  }
+  .detail-timeline .tl-marker-info {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding-top: 0.125rem;
+  }
+  /* Context (silence) entries — muted, smaller */
+  .detail-timeline .tl-entry.tl-context {
+    opacity: 0.45;
+    padding: 0.5rem 0;
+  }
+  .detail-timeline .tl-entry.tl-context .tl-dot {
+    border-color: var(--text-faint);
     width: 7px;
     height: 7px;
-    border-radius: 50%;
-    background: #ff4444;
+  }
+  .detail-timeline .tl-entry.tl-context .tl-screenshot {
+    width: 160px;
+  }
+  .detail-timeline .tl-entry.tl-context:hover {
+    opacity: 0.8;
+  }
+
+  /* ── Live Recording Row ── */
+  .session-row.live {
+    border-color: rgba(239,68,68,0.2);
+    border-left: 2px solid var(--destructive);
+    background: rgba(239,68,68,0.03);
+    animation: live-pulse-bg 3s ease-in-out infinite;
+    box-shadow: 0 0 0 1px rgba(239,68,68,0.08), 0 2px 8px rgba(0,0,0,0.5);
+  }
+  @keyframes live-pulse-bg {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(239,68,68,0.08), 0 2px 8px rgba(0,0,0,0.5); }
+    50%       { box-shadow: 0 0 0 1px rgba(239,68,68,0.18), 0 2px 16px rgba(239,68,68,0.1); }
+  }
+
+  /* Speaking state — green accent when VAD detects voice */
+  .session-row.live.speaking {
+    border-left-color: var(--success);
+    box-shadow: 0 0 0 1px rgba(74,222,128,0.15), 0 2px 12px rgba(74,222,128,0.08);
+  }
+  .mic-bars.speaking .mic-bar.active { background: #22c55e; }
+
+  .live-header {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 0.875rem;
+    gap: 0.625rem;
+    border-bottom: 1px solid rgba(239,68,68,0.12);
+    background: rgba(239,68,68,0.04);
+  }
+  .live-rec-indicator { display: flex; align-items: center; gap: 0.35rem; }
+  .live-rec-label {
+    font-size: 0.6875rem;
+    color: #f87171;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .live-time {
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.8125rem;
+    color: #f87171;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+  }
+  .live-stats {
+    font-size: 0.6875rem;
+    color: var(--text-dim);
+    margin-left: auto;
+    display: flex;
+    gap: 0.625rem;
+    align-items: center;
+  }
+  .live-timeline { max-height: 50vh; overflow-y: auto; padding: 0.375rem 0.875rem; }
+
+  /* Status indicator wrapper and dots */
+  .status-indicator { display: inline-flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+  .status-dot { width: 5px; height: 5px; border-radius: 9999px; display: inline-block; flex-shrink: 0; }
+  .status-dot.recording { background: var(--destructive); animation: pulse 1.5s ease-in-out infinite; }
+  .status-dot.transcribing { background: #f59e0b; }
+  .status-dot.summarizing { background: var(--info); animation: pulse 2s ease-in-out infinite; }
+  .status-dot.done { background: var(--success); }
+  .status-dot.pending { background: #f59e0b; animation: pulse 2s ease-in-out infinite; }
+
+  /* Status badge (pill with dot + label) */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-size: 0.625rem; font-weight: 500; letter-spacing: 0.03em; text-transform: uppercase;
+    padding: 0.125rem 0.5rem 0.125rem 0.375rem;
+    border-radius: 9999px; border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .status-badge.recording { color: var(--destructive); background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); }
+  .status-badge.transcribing { color: #f59e0b; background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); }
+  .status-badge.summarizing { color: var(--info); background: rgba(96,165,250,0.1); border-color: rgba(96,165,250,0.2); }
+  .status-badge.done { color: var(--success); background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.15); }
+  .status-badge.pending { color: #f59e0b; background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); }
+
+  /* check-dot used in header STT/Mic status indicators */
+  .check-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: var(--text-faint);
+    flex-shrink: 0;
+  }
+  .check-dot.green { background: var(--success); box-shadow: 0 0 4px rgba(74,222,128,0.5); }
+  .check-dot.blue  { background: var(--info); }
+  .check-dot.red   { background: #f87171; }
+
+  /* Mic level bars */
+  .mic-bars { display: flex; gap: 2px; align-items: flex-end; }
+  .mic-bars.large { height: 14px; }
+  .mic-bars.mini  { height: 10px; }
+  .mic-bar {
+    border-radius: 1px;
+    background: var(--surface-2);
+    transition: height 0.08s ease-out;
+  }
+  .mic-bars.large .mic-bar { width: 3px; }
+  .mic-bars.mini  .mic-bar { width: 2px; }
+  .mic-bar.active { background: var(--success); }
+
+  button {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-sm);
+    padding: 0 1rem;
+    height: 2.25rem;
+    font-size: 0.8125rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s var(--ease-out);
+    white-space: nowrap;
+  }
+  button:hover:not(:disabled) {
+    background: var(--surface-2);
+    border-color: rgba(255,255,255,0.18);
+    color: var(--text);
+  }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .rec-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--destructive);
     animation: pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 5px rgba(239,68,68,0.6);
   }
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+    50% { opacity: 0.35; }
   }
-
-  #recTime {
-    font-size: 0.75rem;
-    color: #ff6b6b;
-    font-weight: 500;
-    font-family: monospace;
-  }
-
-  .rec-header-right {
-    display: flex;
-    gap: 0.75rem;
-    font-size: 0.7rem;
-    color: #666;
-  }
-
-  /* Status strip */
-  .status-strip {
-    display: flex;
-    gap: 0.4rem;
-    padding: 0.35rem 0.75rem;
-    border-bottom: 1px solid #1a1a1a;
-    background: #0a0a0a;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    font-size: 0.65rem;
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
-    background: #151515;
-    border: 1px solid #252525;
-    color: #888;
-  }
-  .status-pill .pill-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .status-pill.green { color: #4ade80; border-color: #1a3a1a; }
-  .status-pill.green .pill-dot { background: #4ade80; }
-  .status-pill.blue { color: #58a6ff; border-color: #1a2a4a; }
-  .status-pill.blue .pill-dot { background: #58a6ff; }
-  .status-pill.red { color: #f87171; border-color: #3a1a1a; }
-  .status-pill.red .pill-dot { background: #f87171; }
-  .status-pill.gray { color: #666; border-color: #222; }
-  .status-pill.gray .pill-dot { background: #666; }
 
   /* Timeline feed */
   .timeline-feed {
     flex: 1;
     overflow-y: auto;
-    padding: 0.4rem 0.6rem;
+    padding: 0.375rem 0.875rem;
   }
 
   .tl-entry {
     display: flex;
-    gap: 0.4rem;
-    padding: 0.4rem 0;
-    border-bottom: 1px solid #151515;
+    gap: 0.625rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
     align-items: flex-start;
   }
+  .tl-entry:last-child { border-bottom: none; }
 
   .tl-time {
-    color: #555;
-    font-family: monospace;
-    font-size: 0.65rem;
+    color: var(--text-faint);
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.625rem;
     min-width: 32px;
-    padding-top: 2px;
+    padding-top: 3px;
     flex-shrink: 0;
   }
 
   .tl-badge {
-    font-size: 0.6rem;
-    padding: 0.1rem 0.3rem;
-    border-radius: 3px;
+    font-size: 0.5625rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.375rem;
     font-weight: 600;
     flex-shrink: 0;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 700;
   }
-  .tl-badge.img { background: #1a3a1a; color: #3fb950; border: 1px solid #2a5a2a; }
-  .tl-badge.stt { background: #1a2a4a; color: #58a6ff; border: 1px solid #2a4a6a; }
+  /* Replace text badges with colored dots + subtle bg */
+  .tl-badge.img {
+    background: rgba(74,222,128,0.08);
+    color: var(--success);
+    border: 1px solid rgba(74,222,128,0.18);
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .tl-badge.stt {
+    background: rgba(96,165,250,0.08);
+    color: var(--info);
+    border: 1px solid rgba(96,165,250,0.18);
+    border-radius: 9999px;
+    width: 1.5rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
 
-  .tl-body {
-    flex: 1;
-    min-width: 0;
-  }
+  .tl-body { flex: 1; min-width: 0; }
 
   .tl-body img {
-    max-width: 180px;
-    max-height: 101px;
-    border: 1px solid #2a2a2a;
-    border-radius: 3px;
+    max-width: 220px;
+    max-height: 124px;
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
     display: block;
+    transition: border-color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+  }
+  .tl-body img:hover {
+    border-color: var(--border-hover);
+    transform: scale(1.02);
   }
 
   .tl-body .tl-text {
-    font-size: 0.75rem;
-    color: #bbb;
-    line-height: 1.4;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    line-height: 1.6;
     word-break: break-word;
   }
 
-  .tl-entry.pending { opacity: 0.4; }
-  .tl-entry.pending .tl-text { font-style: italic; color: #555; }
+  .tl-entry.pending { opacity: 0.3; }
+  .tl-entry.pending .tl-text { font-style: italic; color: var(--text-dim); }
+  .tl-entry.filtered .tl-text { font-style: italic; color: #f59e0b; opacity: 0.6; font-size: 0.75rem; }
 
-  /* Diagnostics */
+  /* Diagnostics — nearly invisible until hovered */
   .diagnostics {
-    border-top: 1px solid #1a1a1a;
-    padding: 0.3rem 0.75rem;
-    background: #0a0a0a;
+    border-top: 1px solid var(--border);
+    padding: 0.25rem 1rem;
+    background: var(--bg);
+    transition: opacity 0.2s var(--ease-out);
+    opacity: 0.4;
   }
+  .diagnostics:hover { opacity: 1; }
   .diagnostics summary {
     cursor: pointer;
-    color: #555;
-    font-size: 0.7rem;
+    color: var(--text-faint);
+    font-size: 0.625rem;
+    user-select: none;
+    list-style: none;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 0.25rem 0;
   }
+  .diagnostics summary::-webkit-details-marker { display: none; }
   .diagnostics .diag-summary {
-    padding: 0.3rem 0;
-    color: #444;
-    font-family: monospace;
-    font-size: 0.65rem;
+    padding: 0.25rem 0;
+    color: var(--text-faint);
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.5625rem;
+    line-height: 1.6;
   }
   .diagnostics .log {
     max-height: 150px;
     overflow-y: auto;
     font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.7rem;
-    color: #555;
+    font-size: 0.625rem;
+    color: var(--text-dim);
     line-height: 1.5;
     padding-top: 0.25rem;
-    border-top: 1px solid #1a1a1a;
+    border-top: 1px solid var(--border);
   }
-  .log .error { color: #ff6b6b; }
-  .log .success { color: #6bff8b; }
-  .log .info { color: #6bb5ff; }
-
-  /* ── Done View ── */
-  #doneView {
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    padding: 2rem;
-    text-align: center;
-  }
-
-  .done-heading {
-    font-size: 1.1rem;
-    color: #6bff8b;
-    margin-bottom: 0.3rem;
-  }
-
-  #doneSummary {
-    font-size: 0.8rem;
-    color: #888;
-    margin-bottom: 1rem;
-  }
-
-  .done-path {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: #111;
-    border: 1px solid #272727;
-    border-radius: 6px;
-    padding: 0.4rem 0.75rem;
-    margin-bottom: 1.5rem;
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-  .done-path:hover { border-color: #444; }
-
-  #donePathText {
-    font-family: monospace;
-    font-size: 0.75rem;
-    color: #58a6ff;
-    word-break: break-all;
-  }
+  .log .error   { color: #f87171; }
+  .log .success { color: var(--success); }
+  .log .info    { color: var(--info); }
 
   .copy-btn {
-    font-size: 0.7rem;
-    color: #666;
-    border: 1px solid #333;
-    border-radius: 3px;
-    padding: 0.1rem 0.3rem;
-    background: none;
+    font-size: 0.625rem;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.125rem 0.375rem;
+    height: auto;
+    background: transparent;
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.15s;
+    transition: color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
   }
-  .copy-btn:hover { color: #aaa; border-color: #555; }
-
-  .done-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
+  .copy-btn:hover {
+    color: var(--text-muted);
+    border-color: var(--border-hover);
+    background: transparent;
   }
 
-  .done-actions button {
-    padding: 0.35rem 1rem;
-    border-radius: 6px;
-    font-size: 0.8rem;
-  }
+  /* Scrollbar styling for timeline areas */
+  .timeline-feed::-webkit-scrollbar,
+  .live-timeline::-webkit-scrollbar,
+  .detail-timeline::-webkit-scrollbar { width: 4px; }
+  .timeline-feed::-webkit-scrollbar-track,
+  .live-timeline::-webkit-scrollbar-track,
+  .detail-timeline::-webkit-scrollbar-track { background: transparent; }
+  .timeline-feed::-webkit-scrollbar-thumb,
+  .live-timeline::-webkit-scrollbar-thumb,
+  .detail-timeline::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 9999px; }
 
-  #downloadBtn {
-    background: #1a3c6b;
-    border-color: #2a4c8b;
-    color: #fff;
+  @media (prefers-reduced-motion: reduce) {
+    .rec-dot,
+    .status-dot.recording,
+    .status-dot.summarizing,
+    .session-row.live { animation: none; opacity: 0.7; }
+    .session-row:not(.live):not(.dimmed):hover { transform: none; }
   }
-  #downloadBtn:hover { background: #234d80; }
-
-  #newSessionBtn {
-    background: #1a6b3c;
-    border-color: #2a8b4c;
-    color: #fff;
-  }
-  #newSessionBtn:hover { background: #1f7d46; }
 
   /* Hidden capture video */
   #captureVideo { display: none; }
@@ -475,141 +833,96 @@
 </head>
 <body>
 
-<!-- ═══ Setup View ═══ -->
-<div id="setupView" class="view active">
-  <h1>Feedbacks</h1>
-  <p class="subtitle">Screen + voice capture for AI feedback</p>
-
-  <div class="readiness-checks">
-    <div class="check-row">
-      <div class="check-dot" id="sttDot"></div>
-      <span class="check-label">Speech-to-text</span>
-      <span class="check-value" id="sttValue">Checking...</span>
+<!-- ═══ Persistent Header ═══ -->
+<header id="appHeader">
+  <div class="header-left">
+    <h1>Feedbacks</h1>
+  </div>
+  <div class="header-right">
+    <span class="header-status" id="headerSttStatus">
+      <span class="check-dot" id="headerSttDot"></span>
+      <span id="headerSttLabel">STT</span>
+    </span>
+    <span class="header-status" id="headerMicStatus">
+      <span class="check-dot" id="headerMicDot"></span>
+      <span id="headerMicLabel">Mic</span>
+    </span>
+    <span id="headerRecIndicator">
+      <span class="rec-dot"></span>
+      <span id="headerRecTime">0:00</span>
+      <button id="headerStopBtn" onclick="stopSession()">Stop</button>
+    </span>
+    <div class="split-btn">
+      <button id="newCaptureBtn" onclick="startSession()">New Capture</button>
+      <button id="newCaptureDropdown" onclick="showCapturePrompt()" aria-label="New capture with ticket ID">&#x25BE;</button>
     </div>
-    <div class="check-row">
-      <div class="check-dot" id="micDot"></div>
-      <span class="check-label">Microphone</span>
-      <div class="mic-bars large" id="micBarsSetup">
-        <div class="mic-bar" style="height:3px"></div>
-        <div class="mic-bar" style="height:3px"></div>
-        <div class="mic-bar" style="height:3px"></div>
-        <div class="mic-bar" style="height:3px"></div>
-        <div class="mic-bar" style="height:3px"></div>
-      </div>
-    </div>
   </div>
+</header>
 
-  <div id="apiKeyRow">
-    <label>OpenAI Key:</label>
-    <input type="password" id="apiKey" placeholder="sk-..." />
-  </div>
-
-  <div class="setup-config">
-    <input type="text" id="ticketId" placeholder="Ticket ID (optional)" maxlength="20" autocomplete="off" spellcheck="false" />
-    <span id="ticketBadge" aria-live="polite" style="display:none; font-size:0.7rem; color:#60a5fa; padding:0.15rem 0.4rem; border-radius:4px; background:#0d1f35; border:1px solid #1a3a60;"></span>
-    <button id="ticketClear" aria-label="Clear ticket ID" style="display:none; background:none; border:none; color:#666; font-size:1rem; cursor:pointer; padding:0 0.25rem;" onclick="clearTicketId()">×</button>
-  </div>
-
-  <button id="startBtn" onclick="startSession()">Start Session</button>
+<!-- ═══ Capture Start Prompt ═══ -->
+<div id="capturePrompt">
+  <span class="capture-prompt-label">New capture</span>
+  <input type="text" id="captureTicketId" placeholder="Ticket ID (optional)" maxlength="20" autocomplete="off" spellcheck="false" />
+  <button onclick="startSession()">Start recording</button>
+  <button onclick="hideCapturePrompt()">Cancel</button>
 </div>
 
-<!-- ═══ Recording View ═══ -->
-<div id="recordingView" class="view">
-  <!-- Header -->
-  <!-- Done bar (replaces header after recording) -->
-  <div id="doneBar" class="done-bar" style="display:none;">
-    <div class="done-bar-left">
-      <span class="done-bar-title">Session Saved</span>
-      <span id="doneBarSummary" class="done-bar-summary"></span>
-    </div>
-    <div class="done-bar-right">
-      <span class="done-bar-path" onclick="copyPath()">
-        <code id="doneBarPath"></code>
-        <span class="copy-btn" id="copyBtn2">copy</span>
-      </span>
-      <button id="downloadBtn2" onclick="downloadZip()">ZIP</button>
-      <button id="newSessionBtn2" onclick="newSession()">New</button>
-    </div>
+<!-- ═══ Session List ═══ -->
+<div id="sessionList">
+  <div id="emptyState">
+    <div class="empty-icon">&#x25A3;</div>
+    <p class="empty-title">No sessions yet</p>
+    <p class="empty-desc">Capture screen and voice together. Sessions are saved locally and ready for LLM review.</p>
+    <button class="empty-cta" onclick="startSession()">+ New Capture</button>
   </div>
-
-  <div id="recHeader" class="rec-header">
-    <div class="rec-header-left">
-      <button id="stopBtn" onclick="stopSession()">Stop</button>
-      <span class="rec-indicator">
-        <span class="rec-dot"></span>
-        <span id="recTime">0:00</span>
-      </span>
-      <div class="mic-bars mini" id="micBarsRec">
-        <div class="mic-bar" style="height:2px"></div>
-        <div class="mic-bar" style="height:2px"></div>
-        <div class="mic-bar" style="height:2px"></div>
-      </div>
-    </div>
-    <div class="rec-header-right">
-      <span id="headerImgCount">0 img</span>
-      <span id="headerSttCount">0/0 stt</span>
-    </div>
-  </div>
-
-  <!-- Status strip -->
-  <div class="status-strip" id="statusStrip">
-    <span class="status-pill green"><span class="pill-dot"></span><span id="stripStt">STT local</span></span>
-    <span class="status-pill green"><span class="pill-dot"></span><span id="stripMic">Mic</span></span>
-    <span class="status-pill green"><span class="pill-dot"></span><span id="stripCapture">Capture --</span></span>
-    <span class="status-pill blue"><span class="pill-dot"></span><span id="stripImgCount">0 img</span></span>
-    <span class="status-pill blue"><span class="pill-dot"></span><span id="stripSttCount">0/0 stt</span></span>
-    <span class="status-pill gray"><span class="pill-dot"></span><span id="stripDedup">0 deduped</span></span>
-  </div>
-
-  <!-- Timeline -->
-  <div class="timeline-feed" id="timelineFeed"></div>
-
-  <!-- Diagnostics -->
-  <div class="diagnostics">
-    <details>
-      <summary>Diagnostics</summary>
-      <div class="diag-summary" id="diagSummary">--</div>
-      <div class="log" id="log"></div>
-    </details>
-  </div>
+  <!-- Live row and past session rows rendered by JS -->
 </div>
 
-<!-- ═══ Done View ═══ -->
-<div id="doneView" class="view">
-  <div class="done-heading">Session Saved</div>
-  <div id="doneSummary">--</div>
-  <div class="done-path" onclick="copyPath()">
-    <span id="donePathText">/path/to/session</span>
-    <span class="copy-btn" id="copyBtn">copy</span>
-  </div>
-  <div id="retroTicket" role="status" style="display:none; font-size:0.8rem; color:#ffb86b; background:#3a3015; border:1px solid #6b5a2a; border-radius:6px; padding:0.4rem 0.75rem; margin-bottom:0.5rem; align-items:center; gap:0.5rem;">
-    No ticket linked.
-    <input type="text" id="retroTicketId" placeholder="B-05" maxlength="20" autocomplete="off" style="background:#1a1a1a; border:1px solid #555; border-radius:4px; color:#e0e0e0; padding:0.2rem 0.4rem; font-size:0.8rem; width:80px;" />
-    <span style="color:#998050; font-size:0.75rem;">Link it (renames the ZIP)</span>
-  </div>
-  <div class="done-actions">
-    <button id="downloadBtn" onclick="downloadZip()">Download ZIP</button>
-    <button id="newSessionBtn" onclick="newSession()">New Session</button>
-  </div>
+<!-- Diagnostics -->
+<div class="diagnostics">
+  <details>
+    <summary>Diagnostics</summary>
+    <div class="diag-summary" id="diagSummary">--</div>
+    <div class="log" id="log"></div>
+  </details>
 </div>
 
 <!-- Hidden video for getDisplayMedia -->
 <video id="captureVideo" autoplay muted playsinline></video>
 
 <script>
-// ── State ──
+// ── Session state factory ──
+function createSession() {
+  return {
+    id: null,               // set after save, e.g. "feedbacks-2026-03-30-20-51-26"
+    startTime: 0,
+    ticketId: '',           // captured at start, not read from DOM later
+    screenshots: [],
+    transcriptSegments: [],
+    pendingTranscriptions: [],
+    chunkCount: 0,
+    transcribedCount: 0,
+    dedupCount: 0,
+    lastFrameData: null,
+    isRecording: false,
+    speechSpans: [],          // [{start, end, chunkNum}] — VAD-detected speech boundaries
+    zipBlob: null,
+    savedPath: '',
+    timelineEl: null,       // DOM container for this session's timeline
+    status: 'recording',    // recording | transcribing | summarizing | done
+    // Interval/timer IDs
+    durationIntervalId: null,
+    screenshotIntervalId: null,
+    chunkRotationId: null,
+    statusStripIntervalId: null,
+  };
+}
+let currentSession = null;  // The active/most-recent session
+
+// ── Page-level globals (NOT per-session) ──
 let screenStream = null;
-let screenshots = []; // { timestamp, dataUrl, clickPoint?, boundingBox? }
-let sessionStartTime = 0;
-let durationIntervalId = null;
-let screenshotIntervalId = null;
-let lastFrameData = null;
-let isRecording = false;
-let zipBlob = null;
+let sessionStartTime = 0;   // mirrored into session.startTime at start
 let captureInProgress = false;
-let dedupCount = 0;
-let statusStripIntervalId = null;
-let savedPath = '';
 let micAudioCtx = null;
 let micAnalyser = null;
 let micMeterRafId = null;
@@ -618,22 +931,42 @@ let micMeterRafId = null;
 let whisperLocal = false;
 let whisperCheckId = null;
 const WHISPER_LOCAL_URL = 'http://localhost:8081';
-const WHISPER_CLOUD_URL = 'https://api.openai.com';
 const CHUNK_DURATION = 10000; // 10 seconds
 const CAPTURE_INTERVAL = 1000; // auto-screenshot every second, dedup filters unchanged frames
 
-// Chunked transcription state
+// Chunked audio globals (device-level, not per-session)
 let chunkRecorder = null;
 let chunkAudioParts = [];
 let chunkStartTime = 0;
-let chunkRotationId = null;
-let chunkCount = 0;
-let transcribedCount = 0;
-let transcriptSegments = []; // { start, end, text } accumulated
-let pendingTranscriptions = []; // promises for in-flight transcriptions
 
 // Mic stream (may be started in setup for preview)
 let micStreamRef = null;
+
+// ── Voice Activity Detection (VAD) ──
+let isSpeaking = false;
+let speechOnsetTime = 0;       // Date.now() when energy first exceeded threshold
+let speechOffsetTime = 0;      // Date.now() when energy first dropped below threshold
+// Known whisper hallucination phrases — case-insensitive, punctuation-stripped
+const HALLUCINATION_BLOCKLIST = new Set([
+  'thank you', 'thanks for watching', 'thank you for watching',
+  'please subscribe', 'like and subscribe', 'subscribe to my channel',
+  'thanks for listening', 'thank you for listening',
+  'please visit www.sales.com for more information',
+  'see you next time', 'see you in the next video',
+  'bye', 'goodbye', 'bye bye',
+  'you', 'the end', 'so',
+  'thanks', 'okay', 'um', 'uh',
+  'music', 'applause', 'laughter',
+  'subtitle by', 'subtitles by', 'captions by',
+  'translated by', 'transcribed by',
+  'user is describing what they see on screen',
+  'user is currently working and should be functioning fine',
+]);
+
+const SPEECH_THRESHOLD = 25;   // avg frequency bin value (0-255) to trigger speech
+const SPEECH_ONSET_MS = 300;   // energy must exceed threshold for this long to confirm speech
+const SPEECH_OFFSET_MS = 1500; // energy must be below threshold for this long to confirm silence
+const MAX_SPEECH_CHUNK_MS = 30000; // force chunk rotation after 30s of continuous speech
 
 // ── Elements ──
 const $ = id => document.getElementById(id);
@@ -653,40 +986,397 @@ function log(msg, cls = '') {
   el.scrollTop = el.scrollHeight;
 }
 
-// ── State machine ──
-function switchState(state) {
-  $('setupView').classList.remove('active');
-  $('recordingView').classList.remove('active');
-  $('doneView').classList.remove('active');
-  if (state === 'setup') $('setupView').classList.add('active');
-  else if (state === 'recording') {
-    $('recordingView').classList.add('active');
-    $('recHeader').style.display = '';
-    $('doneBar').style.display = 'none';
-  } else if (state === 'done') {
-    // Keep recording view visible (timeline stays), replace header with done bar
-    $('recordingView').classList.add('active');
-    $('recHeader').style.display = 'none';
-    $('doneBar').style.display = '';
+// ── Session List UI ──
+let expandedSessionName = null;
+let loadedSessions = [];  // cached from last GET /sessions
+
+function showCapturePrompt() {
+  $('capturePrompt').classList.add('active');
+  $('captureTicketId').value = '';
+  $('captureTicketId').focus();
+}
+
+function hideCapturePrompt() {
+  $('capturePrompt').classList.remove('active');
+}
+
+async function loadSessions() {
+  try {
+    const resp = await fetch('/sessions');
+    loadedSessions = await resp.json();
+  } catch (e) {
+    loadedSessions = [];
+  }
+  renderSessionList();
+}
+
+function renderSessionList() {
+  const list = $('sessionList');
+  list.querySelectorAll('.session-row:not(.live)').forEach(el => el.remove());
+
+  const emptyState = $('emptyState');
+  const liveRow = list.querySelector('.session-row.live');
+
+  if (loadedSessions.length === 0 && !liveRow) {
+    emptyState.style.display = '';
+  } else {
+    emptyState.style.display = 'none';
+  }
+
+  loadedSessions.forEach(session => {
+    const row = createSessionRow(session);
+    list.appendChild(row);
+  });
+}
+
+function createEl(tag, cls, text) {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+function createSessionRow(session) {
+  const row = createEl('div', 'session-row collapsed');
+  row.dataset.sessionName = session.name;
+  row.setAttribute('role', 'button');
+  row.setAttribute('tabindex', '0');
+  row.setAttribute('aria-expanded', 'false');
+  row.setAttribute('aria-controls', 'detail-' + session.name);
+
+  // Parse date from session.date, session.startTime, or directory name
+  // Directory name format: feedbacks-2026-03-30-20-51-26
+  let date = session.date ? new Date(session.date)
+           : session.startTime ? new Date(session.startTime)
+           : null;
+  if (!date || isNaN(date.getTime())) {
+    // Parse from name: feedbacks-YYYY-MM-DD-HH-mm-ss
+    const m = session.name.match(/feedbacks-(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})-(\d{2})/);
+    if (m) {
+      date = new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]);
+    } else {
+      date = new Date();
+    }
+  }
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+                  date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const stats = [session.duration, (session.imageCount || 0) + ' img', (session.sttCount || 0) + ' stt']
+    .filter(Boolean).join(' · ');
+  const summary = session.summary || 'No summary available';
+  const sessionPath = session.path || ('sessions/' + session.name);
+
+  // Row header
+  const rowHeader = createEl('div', 'session-row-header');
+
+  // Hero image or placeholder
+  if (session.heroImage) {
+    const img = createEl('img', 'row-hero');
+    img.src = '/sessions/' + session.name + '/images/' + session.heroImage;
+    img.alt = '';
+    rowHeader.appendChild(img);
+  } else {
+    rowHeader.appendChild(createEl('div', 'row-hero-placeholder', '--'));
+  }
+
+  // Row info
+  const rowInfo = createEl('div', 'row-info');
+  const line1 = createEl('div', 'row-info-line1');
+
+  if (session.status) {
+    const badge = createEl('span', 'status-badge ' + session.status);
+    const dot = createEl('span', 'status-dot ' + session.status);
+    badge.appendChild(dot);
+    const labels = { recording: 'Recording', transcribing: 'Transcribing', summarizing: 'Summarizing', done: 'Done', pending: 'Processing' };
+    badge.appendChild(document.createTextNode(labels[session.status] || session.status));
+    line1.appendChild(badge);
+  }
+  line1.appendChild(createEl('span', 'row-timestamp', dateStr));
+  if (session.ticketId) {
+    line1.appendChild(createEl('span', 'ticket-badge', session.ticketId));
+  }
+  line1.appendChild(createEl('span', 'row-stats', stats));
+  rowInfo.appendChild(line1);
+  rowInfo.appendChild(createEl('div', 'row-info-line2', summary));
+  rowHeader.appendChild(rowInfo);
+  rowHeader.appendChild(createEl('span', 'row-chevron', '\u25B8'));
+  row.appendChild(rowHeader);
+
+  // Session detail (collapsed by default via CSS)
+  const detail = createEl('div', 'session-detail');
+  detail.id = 'detail-' + session.name;
+
+  const detailSummary = createEl('div', 'detail-summary');
+  if (session.heroImage) {
+    const heroImg = createEl('img', 'detail-hero');
+    heroImg.src = '/sessions/' + session.name + '/images/' + session.heroImage;
+    heroImg.alt = '';
+    detailSummary.appendChild(heroImg);
+  }
+  const detailInfo = createEl('div', 'detail-info');
+  detailInfo.appendChild(createEl('div', 'detail-summary-text', session.summary || 'No summary available'));
+  detailInfo.appendChild(createEl('div', 'detail-path', sessionPath));
+
+  const detailActions = createEl('div', 'detail-actions');
+  const copyPathBtn = createEl('button', '', 'Copy path');
+  copyPathBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copySessionPath(session.name, sessionPath);
+  });
+  const openPlayerBtn = createEl('button', '', 'Open player');
+  openPlayerBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openPlayer(session.name);
+  });
+  detailActions.appendChild(copyPathBtn);
+  detailActions.appendChild(openPlayerBtn);
+  detailInfo.appendChild(detailActions);
+  detailSummary.appendChild(detailInfo);
+  detail.appendChild(detailSummary);
+
+  const detailTimeline = createEl('div', 'detail-timeline');
+  detailTimeline.id = 'timeline-' + session.name;
+  detail.appendChild(detailTimeline);
+  row.appendChild(detail);
+
+  // Click handling with double-click support
+  let clickTimer = null;
+  rowHeader.addEventListener('click', () => {
+    if (clickTimer) {
+      clearTimeout(clickTimer);
+      clickTimer = null;
+      copySessionPath(session.name, sessionPath);
+      return;
+    }
+    clickTimer = setTimeout(() => {
+      clickTimer = null;
+      toggleSessionRow(session.name);
+    }, 250);
+  });
+
+  row.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleSessionRow(session.name);
+    }
+  });
+
+  if (expandedSessionName === session.name) {
+    row.classList.remove('collapsed');
+    row.classList.add('expanded');
+    row.setAttribute('aria-expanded', 'true');
+    loadSessionTimeline(session.name);
+  }
+
+  return row;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function toggleSessionRow(name) {
+  if (expandedSessionName === name) {
+    collapseAllRows();
+    return;
+  }
+  collapseAllRows();
+  expandSessionRow(name);
+}
+
+function expandSessionRow(name) {
+  expandedSessionName = name;
+  const row = document.querySelector('.session-row[data-session-name="' + name + '"]');
+  if (!row) return;
+  row.classList.remove('collapsed');
+  row.classList.add('expanded');
+  row.setAttribute('aria-expanded', 'true');
+
+  document.querySelectorAll('.session-row:not(.live)').forEach(r => {
+    if (r.dataset.sessionName !== name) r.classList.add('dimmed');
+  });
+
+  loadSessionTimeline(name);
+}
+
+function collapseAllRows() {
+  expandedSessionName = null;
+  document.querySelectorAll('.session-row').forEach(r => {
+    r.classList.remove('expanded', 'dimmed');
+    if (!r.classList.contains('live')) r.classList.add('collapsed');
+    r.setAttribute('aria-expanded', 'false');
+  });
+}
+
+async function loadSessionTimeline(name) {
+  const timeline = document.getElementById('timeline-' + name);
+  if (!timeline || timeline.dataset.loaded) return;
+  timeline.dataset.loaded = 'true';
+
+  const session = loadedSessions.find(s => s.name === name);
+  if (!session) return;
+
+  // Use structured timeline data if available (from parsed session.md)
+  if (session.timeline && session.timeline.length > 0) {
+    session.timeline.forEach((seg, i) => {
+      const isContext = seg.context;  // true for [context] silence sections
+      const entry = createEl('div', 'tl-entry' + (isContext ? ' tl-context' : ''));
+
+      // Timeline dot connector
+      const dot = createEl('div', 'tl-dot');
+      entry.appendChild(dot);
+
+      // Timestamp
+      const timeStr = seg.time + (seg.timeEnd ? ' – ' + seg.timeEnd : '');
+      const tsEl = createEl('div', 'tl-timestamp', timeStr);
+      if (isContext) tsEl.textContent += ' [context]';
+      entry.appendChild(tsEl);
+
+      // Content: screenshot + transcript side by side
+      const content = createEl('div', 'tl-content');
+
+      if (seg.image) {
+        const img = createEl('img', 'tl-screenshot');
+        img.src = '/sessions/' + name + '/images/' + seg.image;
+        img.alt = 'Screenshot ' + (i + 1);
+        img.loading = 'lazy';
+        content.appendChild(img);
+      }
+
+      if (seg.transcript) {
+        const transcript = createEl('div', 'tl-transcript');
+        transcript.textContent = '\u201c' + seg.transcript + '\u201d';
+        content.appendChild(transcript);
+      } else if (seg.marker) {
+        const marker = createEl('div', 'tl-marker-info');
+        marker.textContent = 'Marker ' + seg.marker.number + ' — ' + seg.marker.description;
+        content.appendChild(marker);
+      }
+
+      entry.appendChild(content);
+      timeline.appendChild(entry);
+    });
+  } else {
+    // Fallback: just show images (no session.md data available)
+    for (let i = 1; i <= (session.imageCount || 0); i++) {
+      const filename = String(i).padStart(3, '0') + '.png';
+      const entry = createEl('div', 'tl-entry');
+      entry.appendChild(createEl('div', 'tl-dot'));
+      const content = createEl('div', 'tl-content');
+      const img = createEl('img', 'tl-screenshot');
+      img.src = '/sessions/' + name + '/images/' + filename;
+      img.alt = 'Screenshot ' + i;
+      img.loading = 'lazy';
+      content.appendChild(img);
+      entry.appendChild(content);
+      timeline.appendChild(entry);
+    }
   }
 }
 
-function newSession() {
-  cleanup();
-  switchState('setup');
-  initMicPreview();
+function copySessionPath(name, path) {
+  const text = path || name;
+  const doFeedback = () => {
+    const row = document.querySelector('.session-row[data-session-name="' + name + '"]');
+    if (row) {
+      const chevron = row.querySelector('.row-chevron');
+      if (chevron) {
+        const orig = chevron.textContent;
+        chevron.textContent = '\u2713';
+        setTimeout(() => { chevron.textContent = orig; }, 1500);
+      }
+    }
+  };
+  navigator.clipboard.writeText(text).then(doFeedback).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    doFeedback();
+  });
 }
+
+function openPlayer(name) {
+  window.open('/sessions/' + name + '/player.html', '_blank');
+}
+
+// ── Create live recording row ──
+function createLiveRow() {
+  const row = createEl('div', 'session-row live');
+  row.id = 'liveSessionRow';
+
+  const liveHeader = createEl('div', 'live-header');
+
+  const recIndicator = createEl('div', 'live-rec-indicator');
+  recIndicator.appendChild(createEl('span', 'rec-dot'));
+  recIndicator.appendChild(createEl('span', 'live-rec-label', 'Recording'));
+  liveHeader.appendChild(recIndicator);
+
+  // Status indicator — updates through lifecycle: recording → transcribing → summarizing → done
+  const statusIndicator = createEl('span', 'status-indicator');
+  statusIndicator.id = 'liveStatusIndicator';
+  liveHeader.appendChild(statusIndicator);
+
+  liveHeader.appendChild(createEl('span', 'live-time', '0:00'));
+  // store id for updates
+  liveHeader.lastElementChild.id = 'liveRecTime';
+
+  const micBars = createEl('div', 'mic-bars large');
+  micBars.id = 'micBarsLive';
+  for (let i = 0; i < 5; i++) {
+    const bar = createEl('div', 'mic-bar');
+    bar.style.height = '2px';
+    micBars.appendChild(bar);
+  }
+  liveHeader.appendChild(micBars);
+
+  const liveStats = createEl('div', 'live-stats');
+  const imgCount = createEl('span', '', '0 img');
+  imgCount.id = 'liveImgCount';
+  const sttCount = createEl('span', '', '0/0 stt');
+  sttCount.id = 'liveSttCount';
+  liveStats.appendChild(imgCount);
+  liveStats.appendChild(sttCount);
+  liveHeader.appendChild(liveStats);
+
+  row.appendChild(liveHeader);
+
+  const liveTimeline = createEl('div', 'live-timeline timeline-feed');
+  liveTimeline.id = 'liveTimeline';
+  row.appendChild(liveTimeline);
+
+  return row;
+}
+
+// Global Escape key handler
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if ($('capturePrompt').classList.contains('active')) {
+      hideCapturePrompt();
+    } else if (expandedSessionName) {
+      collapseAllRows();
+    }
+  }
+});
 
 // ── Mic level meter ──
 function initMicPreview() {
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     window._previewMicStream = stream;
     micStreamRef = stream;
-    $('micDot').className = 'check-dot green';
+    const dot = $('headerMicDot');
+    const label = $('headerMicLabel');
+    if (dot) dot.className = 'check-dot green';
+    if (label) label.textContent = 'Mic';
     startMicMeter(stream);
   }).catch(err => {
     log('Mic access denied: ' + err.message, 'error');
-    $('micDot').className = 'check-dot red';
+    const dot = $('headerMicDot');
+    const label = $('headerMicLabel');
+    if (dot) dot.className = 'check-dot red';
+    if (label) label.textContent = 'Mic off';
   });
 }
 
@@ -704,31 +1394,50 @@ function startMicMeter(stream) {
     micMeterRafId = requestAnimationFrame(animate);
     micAnalyser.getByteFrequencyData(dataArray);
 
-    // Update large bars (setup)
-    const setupBars = $('micBarsSetup');
-    if (setupBars) {
-      const bars = setupBars.querySelectorAll('.mic-bar');
+    // Update live recording row mic bars
+    const liveBars = $('micBarsLive');
+    if (liveBars) {
+      const bars = liveBars.querySelectorAll('.mic-bar');
       const binCount = bars.length;
       for (let i = 0; i < binCount; i++) {
         const binIndex = Math.floor(i * dataArray.length / binCount);
         const val = dataArray[binIndex] || 0;
-        const h = Math.max(3, Math.round(val / 255 * 14));
+        const h = Math.max(2, Math.round(val / 255 * 14));
         bars[i].style.height = h + 'px';
         bars[i].className = 'mic-bar' + (val > 20 ? ' active' : '');
       }
     }
 
-    // Update mini bars (recording)
-    const recBars = $('micBarsRec');
-    if (recBars) {
-      const bars = recBars.querySelectorAll('.mic-bar');
-      const binCount = bars.length;
-      for (let i = 0; i < binCount; i++) {
-        const binIndex = Math.floor(i * dataArray.length / binCount);
-        const val = dataArray[binIndex] || 0;
-        const h = Math.max(2, Math.round(val / 255 * 10));
-        bars[i].style.height = h + 'px';
-        bars[i].className = 'mic-bar' + (val > 20 ? ' active' : '');
+    // ── Voice Activity Detection ──
+    if (currentSession && currentSession.isRecording && sessionStartTime) {
+      const avgEnergy = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
+      const now = Date.now();
+
+      if (!isSpeaking) {
+        if (avgEnergy > SPEECH_THRESHOLD) {
+          if (!speechOnsetTime) speechOnsetTime = now;
+          if (now - speechOnsetTime >= SPEECH_ONSET_MS) {
+            isSpeaking = true;
+            speechOffsetTime = 0;
+            const spanStart = (speechOnsetTime - sessionStartTime) / 1000;
+            onSpeechStart(spanStart);
+          }
+        } else {
+          speechOnsetTime = 0;
+        }
+      } else {
+        if (avgEnergy < SPEECH_THRESHOLD) {
+          if (!speechOffsetTime) speechOffsetTime = now;
+          if (now - speechOffsetTime >= SPEECH_OFFSET_MS) {
+            isSpeaking = false;
+            speechOnsetTime = 0;
+            const spanEnd = (speechOffsetTime - sessionStartTime) / 1000;
+            onSpeechEnd(spanEnd);
+            speechOffsetTime = 0;
+          }
+        } else {
+          speechOffsetTime = 0;
+        }
       }
     }
   }
@@ -743,10 +1452,92 @@ function stopMicMeter() {
   micAnalyser = null;
 }
 
+// ── Voice Activity Detection — speech event handlers ──
+
+function onSpeechStart(startTime) {
+  if (!currentSession || !currentSession.isRecording) return;
+
+  // Start a new audio chunk if one isn't already recording
+  if (!chunkRecorder || chunkRecorder.state !== 'recording') {
+    startChunkRecording(micStreamRef);
+  }
+
+  currentSession.speechSpans.push({ start: startTime, end: null, chunkNum: currentSession.chunkCount + 1 });
+  updateSpeechIndicator(true);
+  log(`Speech started at ${formatTime(startTime)}`, 'info');
+}
+
+function onSpeechEnd(endTime) {
+  if (!currentSession || !currentSession.isRecording) return;
+
+  // Close the current speech span
+  const spans = currentSession.speechSpans;
+  if (spans.length > 0 && spans[spans.length - 1].end === null) {
+    spans[spans.length - 1].end = endTime;
+  }
+
+  // Finalize the audio chunk — send to whisper
+  rotateChunkForSpeech();
+  updateSpeechIndicator(false);
+  log(`Speech ended at ${formatTime(endTime)} — sending to whisper`, 'info');
+}
+
+function rotateChunkForSpeech() {
+  // Like rotateChunk() but does NOT start a new chunk after stopping.
+  // A new chunk starts only when speech is detected again (onSpeechStart).
+  if (!chunkRecorder || chunkRecorder.state !== 'recording') return;
+  if (!currentSession) return;
+
+  const partsSnapshot = chunkAudioParts;
+  const startSnapshot = chunkStartTime;
+  currentSession.chunkCount++;
+  const chunkNum = currentSession.chunkCount;
+  const session = currentSession;
+
+  insertSTTPlaceholder(chunkNum, startSnapshot, session.timelineEl);
+
+  chunkRecorder.stop();
+  const finalizePromise = new Promise(resolve => {
+    chunkRecorder.onstop = () => {
+      const mimeType = getSupportedMimeType();
+      const ext = mimeType.includes('webm') ? 'webm' : mimeType.includes('mp4') ? 'mp4' : 'ogg';
+      const blob = new Blob(partsSnapshot, { type: mimeType });
+
+      if (blob.size < 1000) {
+        log(`Chunk ${chunkNum} too small (${blob.size}B), skipping`, 'info');
+        resolve();
+        return;
+      }
+
+      const transcriptionPromise = transcribeChunk(blob, ext, startSnapshot, chunkNum, session);
+      session.pendingTranscriptions.push(transcriptionPromise);
+      transcriptionPromise.then(resolve);
+    };
+  });
+
+  // Do NOT start a new chunk — wait for next speech onset
+  chunkRecorder = null;
+  chunkAudioParts = [];
+
+  return finalizePromise;
+}
+
+function updateSpeechIndicator(speaking) {
+  const liveRow = document.querySelector('.session-row.live');
+  if (liveRow) {
+    liveRow.classList.toggle('speaking', speaking);
+  }
+  // Also update mic bars container for visual feedback
+  const micBars = $('micBarsLive');
+  if (micBars) {
+    micBars.classList.toggle('speaking', speaking);
+  }
+}
+
 // ── Timeline ──
-function insertTimelineEntry(type, timestamp, label, imgSrc) {
-  const feed = $('timelineFeed');
-  if (!feed) return;
+function insertTimelineEntry(type, timestamp, label, imgSrc, container) {
+  const feed = container;
+  if (!feed) { log('insertTimelineEntry: no container', 'error'); return; }
 
   const entry = document.createElement('div');
   entry.className = 'tl-entry';
@@ -796,9 +1587,9 @@ function insertTimelineEntry(type, timestamp, label, imgSrc) {
   if (isNearBottom) feed.scrollTop = feed.scrollHeight;
 }
 
-function insertSTTPlaceholder(chunkNum, offsetTime) {
-  const feed = $('timelineFeed');
-  if (!feed) return;
+function insertSTTPlaceholder(chunkNum, offsetTime, container) {
+  const feed = container;
+  if (!feed) { log('insertSTTPlaceholder: no container', 'error'); return; }
 
   const entry = document.createElement('div');
   entry.className = 'tl-entry pending';
@@ -839,122 +1630,68 @@ function insertSTTPlaceholder(chunkNum, offsetTime) {
   if (isNearBottom) feed.scrollTop = feed.scrollHeight;
 }
 
-function replaceSTTPlaceholder(chunkNum, transcriptText, offsetTime) {
-  const feed = $('timelineFeed');
-  if (!feed) return;
+function replaceSTTPlaceholder(chunkNum, transcriptText, offsetTime, container, endTime) {
+  const feed = container;
+  if (!feed) { log('replaceSTTPlaceholder: no container', 'error'); return; }
 
+  const isFiltered = transcriptText && transcriptText.startsWith('\u26a0');
   const placeholder = feed.querySelector(`.tl-entry[data-chunk-num="${chunkNum}"]`);
   if (placeholder) {
     placeholder.classList.remove('pending');
+    if (isFiltered) placeholder.classList.add('filtered');
     const textEl = placeholder.querySelector('.tl-text');
     if (textEl) textEl.textContent = transcriptText || '(no speech detected)';
+    // Update time display to show range
+    const timeEl = placeholder.querySelector('.tl-time');
+    if (timeEl && endTime != null) {
+      timeEl.textContent = formatTime(offsetTime) + ' – ' + formatTime(endTime);
+    }
   } else {
-    // No placeholder found, insert directly
-    insertTimelineEntry('stt', offsetTime, transcriptText || '(no speech detected)', null);
+    insertTimelineEntry('stt', offsetTime, transcriptText || '(no speech detected)', null, feed);
   }
 }
 
-// ── Status strip ──
+// ── Status update ── (updates live row counts and diagnostics panel)
 function updateStatusStrip() {
-  // STT
-  const sttPill = $('stripStt');
-  if (sttPill) {
-    if (whisperLocal) {
-      sttPill.textContent = 'STT local';
-      sttPill.parentElement.className = 'status-pill green';
-    } else if ($('apiKey') && $('apiKey').value.trim()) {
-      sttPill.textContent = 'STT cloud';
-      sttPill.parentElement.className = 'status-pill blue';
-    } else {
-      sttPill.textContent = 'STT off';
-      sttPill.parentElement.className = 'status-pill red';
-    }
-  }
+  const sess = currentSession;
+  const imgLen   = sess ? sess.screenshots.length : 0;
+  const sttDone  = sess ? sess.transcribedCount   : 0;
+  const sttTotal = sess ? sess.chunkCount         : 0;
+  const dedup    = sess ? sess.dedupCount         : 0;
 
-  // Mic
-  const micPill = $('stripMic');
-  if (micPill) {
-    const active = micStreamRef && micStreamRef.active;
-    micPill.textContent = active ? 'Mic' : 'Mic off';
-    micPill.parentElement.className = 'status-pill ' + (active ? 'green' : 'red');
-  }
+  // Live row counts
+  const liveImg = $('liveImgCount');
+  if (liveImg) liveImg.textContent = imgLen + ' img';
+  const liveStt = $('liveSttCount');
+  if (liveStt) liveStt.textContent = sttDone + '/' + sttTotal + ' stt';
 
-  // Capture resolution
-  const capPill = $('stripCapture');
-  if (capPill && screenStream) {
-    const track = screenStream.getVideoTracks()[0];
-    if (track && track.getSettings) {
-      const s = track.getSettings();
-      capPill.textContent = `Capture ${s.width || '--'}x${s.height || '--'}`;
-    }
-  }
-
-  // Counts
-  const imgCount = $('stripImgCount');
-  if (imgCount) imgCount.textContent = screenshots.length + ' img';
-
-  const sttCount = $('stripSttCount');
-  if (sttCount) sttCount.textContent = `${transcribedCount}/${chunkCount} stt`;
-
-  const dedupEl = $('stripDedup');
-  if (dedupEl) dedupEl.textContent = dedupCount + ' deduped';
-
-  // Header counts
-  const hImg = $('headerImgCount');
-  if (hImg) hImg.textContent = screenshots.length + ' img';
-  const hStt = $('headerSttCount');
-  if (hStt) hStt.textContent = `${transcribedCount}/${chunkCount} stt`;
-
-  // Diag summary
+  // Diagnostics panel
   const diagSum = $('diagSummary');
   if (diagSum) {
     const video = $('captureVideo');
     const w = video ? video.videoWidth : '--';
     const h = video ? video.videoHeight : '--';
-    diagSum.textContent = `VideoFrame ${w}x${h} | Mic ${micStreamRef?.active ? 'active' : 'dead'} | Chunk ${chunkCount} | Dedup: ${dedupCount} skipped | Black: OK`;
+    const micActive = micStreamRef && micStreamRef.active ? 'active' : 'dead';
+    diagSum.textContent = 'VideoFrame ' + w + 'x' + h + ' | Mic ' + micActive + ' | Chunk ' + sttTotal + ' | Dedup: ' + dedup + ' skipped | Black: OK';
   }
-}
-
-// ── Clipboard copy ──
-function copyPath() {
-  const text = savedPath || '';
-  if (!text) return;
-  function showCopied() {
-    for (const id of ['copyBtn', 'copyBtn2']) {
-      const btn = $(id);
-      if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'copy'; }, 2000); }
-    }
-  }
-  navigator.clipboard.writeText(text).then(showCopied).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    showCopied();
-  });
 }
 
 // ── Whisper health check ──
 async function checkWhisper() {
+  const dot = $('headerSttDot');
+  const label = $('headerSttLabel');
   try {
-    const resp = await fetch(`${WHISPER_LOCAL_URL}/health`, { signal: AbortSignal.timeout(2000) });
+    const resp = await fetch(WHISPER_LOCAL_URL + '/health', { signal: AbortSignal.timeout(2000) });
     if (resp.ok) {
       whisperLocal = true;
-      $('sttDot').className = 'check-dot green';
-      $('sttValue').textContent = 'Local (whisper.cpp)';
-      $('sttValue').className = 'check-value green';
-      if ($('apiKeyRow')) $('apiKeyRow').style.display = 'none';
+      if (dot) dot.className = 'check-dot green';
+      if (label) label.textContent = 'STT';
       return;
     }
   } catch {}
   whisperLocal = false;
-  const hasKey = $('apiKey') && $('apiKey').value.trim().length > 0;
-  $('sttDot').className = `check-dot ${hasKey ? 'blue' : 'red'}`;
-  $('sttValue').textContent = hasKey ? 'Cloud (OpenAI)' : 'No STT';
-  $('sttValue').className = `check-value ${hasKey ? 'blue' : 'red'}`;
-  if ($('apiKeyRow')) $('apiKeyRow').style.display = 'flex';
+  if (dot) dot.className = 'check-dot red';
+  if (label) label.textContent = 'STT off';
 }
 
 // ── Frame capture — tries multiple methods with timeout ──
@@ -1021,8 +1758,10 @@ async function captureFrame() {
 }
 
 // ── Screenshot capture ──
-async function captureScreenshot(clickPoint, boundingBox) {
-  if (!screenStream || !isRecording) return;
+async function captureScreenshot(session, clickPoint, boundingBox) {
+  session = session || currentSession;
+  if (!session || !session.isRecording) return;
+  if (!screenStream) return;
 
   const track = screenStream.getVideoTracks()[0];
   if (!track || track.readyState !== 'live') {
@@ -1048,16 +1787,16 @@ async function captureScreenshot(clickPoint, boundingBox) {
 
   // Skip near-duplicate frames (auto-captures only, not manual clicks)
   // But always save at least one frame every 5 seconds
-  const nowSec = (Date.now() - sessionStartTime) / 1000;
-  const lastShotTime = screenshots.length > 0 ? screenshots[screenshots.length - 1].timestamp : -999;
+  const nowSec = (Date.now() - session.startTime) / 1000;
+  const lastShotTime = session.screenshots.length > 0 ? session.screenshots[session.screenshots.length - 1].timestamp : -999;
   const forceCapture = (nowSec - lastShotTime) >= 5;
 
-  if (!clickPoint && !boundingBox && lastFrameData && !forceCapture) {
+  if (!clickPoint && !boundingBox && session.lastFrameData && !forceCapture) {
     // Sample a wide horizontal strip from the middle of the frame (catches scrolling, cursor, content changes)
     const stripY = Math.floor(h / 2) - 4;
     const stripH = 8;
     const check = ctx.getImageData(0, Math.max(0, stripY), w, stripH);
-    const prev = lastFrameData;
+    const prev = session.lastFrameData;
     if (prev && prev.length === check.data.length) {
       let totalDiff = 0;
       let samples = 0;
@@ -1067,7 +1806,7 @@ async function captureScreenshot(clickPoint, boundingBox) {
         samples++;
       }
       if (samples > 0 && totalDiff / samples < 3) {
-        dedupCount++;
+        session.dedupCount++;
         captureInProgress = false;
         return;
       }
@@ -1081,35 +1820,35 @@ async function captureScreenshot(clickPoint, boundingBox) {
   );
   const nonBlack = sample.data.some((v, i) => i % 4 !== 3 && v > 5);
   if (!nonBlack) {
-    log(`WARNING: screenshot #${screenshots.length + 1} is a BLACK FRAME (${w}x${h})`, 'error');
+    log(`WARNING: screenshot #${session.screenshots.length + 1} is a BLACK FRAME (${w}x${h})`, 'error');
   }
 
   // Store frame strip for dedup comparison (full-width horizontal strip from middle)
   const stripY = Math.floor(h / 2) - 4;
-  lastFrameData = ctx.getImageData(0, Math.max(0, stripY), w, 8).data;
+  session.lastFrameData = ctx.getImageData(0, Math.max(0, stripY), w, 8).data;
 
   // Draw marker annotation
   let marker = null;
   if (clickPoint) {
-    marker = screenshots.length + 1;
+    marker = session.screenshots.length + 1;
     drawMarker(ctx, clickPoint.x, clickPoint.y, marker, canvas.width);
   } else if (boundingBox) {
-    marker = screenshots.length + 1;
+    marker = session.screenshots.length + 1;
     drawSelectionBox(ctx, boundingBox, marker, canvas.width);
   }
 
   const dataUrl = canvas.toDataURL('image/png');
-  const elapsed = (Date.now() - sessionStartTime) / 1000;
+  const elapsed = (Date.now() - session.startTime) / 1000;
   const shot = { timestamp: elapsed, dataUrl };
   if (clickPoint) shot.clickPoint = { x: clickPoint.x, y: clickPoint.y, marker };
   if (boundingBox) shot.boundingBox = { ...boundingBox, marker };
-  screenshots.push(shot);
+  session.screenshots.push(shot);
 
   // Update timeline and status
-  insertTimelineEntry('img', elapsed, null, dataUrl);
+  insertTimelineEntry('img', elapsed, null, dataUrl, session.timelineEl);
   updateStatusStrip();
 
-  log(`Screenshot #${screenshots.length} at ${formatTime(elapsed)}`);
+  log(`Screenshot #${session.screenshots.length} at ${formatTime(elapsed)}`);
   } finally {
     captureInProgress = false;
   }
@@ -1171,14 +1910,16 @@ function startChunkRecording(stream) {
 
 function rotateChunk() {
   if (!chunkRecorder || chunkRecorder.state !== 'recording') return;
+  if (!currentSession) return;
 
   const partsSnapshot = chunkAudioParts;
   const startSnapshot = chunkStartTime;
-  chunkCount++;
-  const chunkNum = chunkCount;
+  currentSession.chunkCount++;
+  const chunkNum = currentSession.chunkCount;
+  const session = currentSession;  // capture in closure
 
   // Insert STT placeholder in timeline
-  insertSTTPlaceholder(chunkNum, startSnapshot);
+  insertSTTPlaceholder(chunkNum, startSnapshot, session.timelineEl);
 
   // Stop current recorder — triggers finalization
   chunkRecorder.stop();
@@ -1194,45 +1935,41 @@ function rotateChunk() {
         return;
       }
 
-      const transcriptionPromise = transcribeChunk(blob, ext, startSnapshot, chunkNum);
-      pendingTranscriptions.push(transcriptionPromise);
+      const transcriptionPromise = transcribeChunk(blob, ext, startSnapshot, chunkNum, session);
+      session.pendingTranscriptions.push(transcriptionPromise);
       transcriptionPromise.then(resolve);
     };
   });
 
   // Start new chunk immediately
-  if (isRecording && micStreamRef) {
+  if (session.isRecording && micStreamRef) {
     startChunkRecording(micStreamRef);
   }
 
   return finalizePromise;
 }
 
-async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
-  const isLocal = whisperLocal;
-  const baseUrl = isLocal ? WHISPER_LOCAL_URL : WHISPER_CLOUD_URL;
-  const apiKey = $('apiKey') ? $('apiKey').value.trim() : '';
+async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
+  // Capture session in closure — use currentSession as fallback
+  session = session || currentSession;
 
-  if (!isLocal && !apiKey) {
-    log(`Chunk ${chunkNum}: no STT available, skipping`, 'error');
-    transcriptSegments.push({
+  if (!whisperLocal) {
+    log(`Chunk ${chunkNum}: no STT available (whisper offline), skipping`, 'error');
+    session.transcriptSegments.push({
       start: offsetTime,
       end: offsetTime + CHUNK_DURATION / 1000,
       text: '(No transcription available)'
     });
-    replaceSTTPlaceholder(chunkNum, '(No transcription available)', offsetTime);
+    replaceSTTPlaceholder(chunkNum, '(No transcription available)', offsetTime, session.timelineEl);
     updateStatusStrip();
     return;
   }
 
-  const headers = {};
-  if (!isLocal) headers['Authorization'] = `Bearer ${apiKey}`;
-
-  // Build context prompt from recent transcript for continuity
-  const recentText = transcriptSegments.slice(-5).map(s => s.text).join(' ').trim();
-  const prompt = recentText
-    ? `Feedback session on a web application. Previous: ${recentText.slice(-150)}`
-    : 'Feedback session on a web application. User is describing what they see on screen.';
+  // condition_on_previous_text=False equivalent: do NOT send previous transcript
+  // as prompt. When whisper hallucinates, the hallucinated text seeds the next
+  // chunk's prompt, creating a cascade ("thank you" x28). Killing the feedback
+  // loop is more valuable than the marginal continuity benefit.
+  // See docs/decisions/001-whisper-initial-prompt.md
 
   const formData = new FormData();
   formData.append('file', audioBlob, `chunk.${ext}`);
@@ -1240,16 +1977,13 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
   formData.append('response_format', 'verbose_json');
   formData.append('timestamp_granularities[]', 'segment');
   formData.append('temperature', '0');
-  formData.append('prompt', prompt);
 
-  // Local whisper: use /transcribe proxy (converts WebM→WAV via ffmpeg)
-  // Cloud (OpenAI): hit API directly (accepts WebM natively)
-  const transcribeUrl = isLocal ? '/transcribe' : `${baseUrl}/v1/audio/transcriptions`;
+  // Use /transcribe proxy which converts WebM→WAV via ffmpeg before forwarding to whisper
+  const transcribeUrl = '/transcribe';
 
   try {
     const resp = await fetch(transcribeUrl, {
       method: 'POST',
-      headers,
       body: formData
     });
 
@@ -1259,31 +1993,68 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum) {
     }
 
     const data = await resp.json();
-    const segments = data.segments || [{ start: 0, end: data.duration || 0, text: data.text || '' }];
+    let segments = data.segments || [{ start: 0, end: data.duration || 0, text: data.text || '' }];
+
+    // ── Hallucination filters ──
+    // 1. Blocklist: known whisper hallucination phrases (case-insensitive exact match)
+    const beforeBlocklist = segments.length;
+    segments = segments.filter(seg => {
+      const t = seg.text.trim().toLowerCase().replace(/[.,!?]+$/g, '');
+      return !HALLUCINATION_BLOCKLIST.has(t);
+    });
+    const blockedCount = beforeBlocklist - segments.length;
+    if (blockedCount > 0) {
+      log(`Chunk ${chunkNum}: ${blockedCount} blocklisted segment(s) filtered`, 'info');
+    }
+
+    // 2. Repeated-output detection: if same text appears 3+ times in this chunk, drop all
+    if (segments.length >= 3) {
+      const texts = segments.map(s => s.text.trim().toLowerCase());
+      const counts = {};
+      for (const t of texts) counts[t] = (counts[t] || 0) + 1;
+      const maxCount = Math.max(0, ...Object.values(counts));
+      if (maxCount >= 3) {
+        const repeatedPhrase = Object.entries(counts).find(([,c]) => c >= 3)?.[0] || '?';
+        log(`Chunk ${chunkNum}: repeated output detected ("${repeatedPhrase}" x${maxCount}), dropping`, 'info');
+        // Record it as a filtered segment so it shows in the timeline
+        session.transcriptSegments.push({
+          start: offsetTime,
+          end: offsetTime + (data.duration || 10),
+          text: `(filtered: repeated hallucination "${repeatedPhrase}" x${maxCount})`,
+          filtered: true
+        });
+        // Show in live timeline
+        replaceSTTPlaceholder(chunkNum, `\u26a0 Filtered: repeated "${repeatedPhrase}" x${maxCount}`, offsetTime, session.timelineEl, offsetTime + (data.duration || 10));
+        session.transcribedCount++;
+        updateStatusStrip();
+        return;
+      }
+    }
 
     // Offset timestamps by chunk start time
     for (const seg of segments) {
-      transcriptSegments.push({
+      session.transcriptSegments.push({
         start: seg.start + offsetTime,
         end: seg.end + offsetTime,
         text: seg.text
       });
     }
 
-    transcribedCount++;
+    session.transcribedCount++;
     const transcriptText = segments.map(s => s.text).join(' ').trim();
-    replaceSTTPlaceholder(chunkNum, transcriptText, offsetTime);
+    const chunkEndTime = segments.length > 0 ? segments[segments.length - 1].end + offsetTime : null;
+    replaceSTTPlaceholder(chunkNum, transcriptText || '(no speech detected)', offsetTime, session.timelineEl, chunkEndTime);
     updateStatusStrip();
     log(`Chunk ${chunkNum} transcribed (${segments.length} segments)`, 'success');
   } catch (err) {
     log(`Chunk ${chunkNum} failed: ${err.message}`, 'error');
-    transcriptSegments.push({
+    session.transcriptSegments.push({
       start: offsetTime,
       end: offsetTime + CHUNK_DURATION / 1000,
       text: `(Chunk ${chunkNum} transcription failed)`
     });
-    transcribedCount++;
-    replaceSTTPlaceholder(chunkNum, `(Chunk ${chunkNum} transcription failed)`, offsetTime);
+    session.transcribedCount++;
+    replaceSTTPlaceholder(chunkNum, `(Chunk ${chunkNum} transcription failed)`, offsetTime, session.timelineEl);
     updateStatusStrip();
   }
 }
@@ -1310,48 +2081,82 @@ async function startSession() {
     const video = $('captureVideo');
     video.srcObject = screenStream;
 
-    // Reset state
-    screenshots = [];
-    transcriptSegments = [];
-    pendingTranscriptions = [];
-    chunkCount = 0;
-    transcribedCount = 0;
-    sessionStartTime = Date.now();
-    isRecording = true;
-    zipBlob = null;
-    lastFrameData = null;
-    dedupCount = 0;
+    // Create session object and capture ticketId from DOM before any await
+    currentSession = createSession();
+    currentSession.startTime = Date.now();
+    currentSession.ticketId = $('captureTicketId') ? $('captureTicketId').value.trim() : '';
+    currentSession.isRecording = true;
 
-    // Clear timeline
-    const feed = $('timelineFeed');
-    if (feed) feed.textContent = '';
+    // Mirror startTime to page-level global for legacy code that still reads it
+    sessionStartTime = currentSession.startTime;
 
-    // Switch to recording view
-    switchState('recording');
+    // Hide capture prompt
+    hideCapturePrompt();
 
-    // Start mic meter for recording view
+    // Build live row and insert at top of session list
+    const liveRow = createLiveRow();
+    const sessionList = $('sessionList');
+    const firstRow = sessionList.querySelector('.session-row');
+    if (firstRow) {
+      sessionList.insertBefore(liveRow, firstRow);
+    } else {
+      sessionList.appendChild(liveRow);
+    }
+
+    // Hide empty state
+    const emptyState = $('emptyState');
+    if (emptyState) emptyState.style.display = 'none';
+
+    // Dim past session rows
+    document.querySelectorAll('.session-row:not(.live)').forEach(r => r.classList.add('dimmed'));
+
+    // Wire timeline to live row container
+    currentSession.timelineEl = $('liveTimeline');
+
+    // Disable New Capture button
+    const newCaptureBtn = $('newCaptureBtn');
+    if (newCaptureBtn) { newCaptureBtn.disabled = true; newCaptureBtn.textContent = 'Recording...'; }
+
+    // Show header recording indicator
+    const recIndicator = $('headerRecIndicator');
+    if (recIndicator) recIndicator.classList.add('active');
+
+    // Start mic meter
     startMicMeter(micStreamRef);
 
     // Start status strip updates
-    statusStripIntervalId = setInterval(updateStatusStrip, 1000);
+    currentSession.statusStripIntervalId = setInterval(updateStatusStrip, 1000);
     updateStatusStrip();
 
-    // Start chunked audio recording
+    // Start chunked audio recording — initial chunk starts immediately,
+    // but subsequent chunks are driven by VAD (speech start/end events).
+    // The recorder captures continuously; chunks are finalized on speech end.
     startChunkRecording(micStreamRef);
 
-    // Rotate audio chunks every 10 seconds
-    chunkRotationId = setInterval(rotateChunk, CHUNK_DURATION);
+    // Safety cap: force chunk rotation if speech continues for too long (>30s)
+    currentSession.chunkRotationId = setInterval(() => {
+      if (isSpeaking && chunkRecorder && chunkRecorder.state === 'recording') {
+        const elapsed = (Date.now() - sessionStartTime) / 1000 - chunkStartTime;
+        if (elapsed >= MAX_SPEECH_CHUNK_MS / 1000) {
+          log('Speech chunk >30s — force rotating', 'info');
+          rotateChunk(); // uses existing rotateChunk which starts a new chunk immediately
+        }
+      }
+    }, 5000);
 
     // Auto-capture screenshots every second
-    screenshotIntervalId = setInterval(() => {
-      captureScreenshot().catch(e => log(`Auto-capture failed: ${e.message}`, 'error'));
+    currentSession.screenshotIntervalId = setInterval(() => {
+      captureScreenshot(currentSession).catch(e => log(`Auto-capture failed: ${e.message}`, 'error'));
     }, CAPTURE_INTERVAL);
 
-    // Start duration timer
-    durationIntervalId = setInterval(() => {
-      const elapsed = (Date.now() - sessionStartTime) / 1000;
-      const el = $('recTime');
-      if (el) el.textContent = formatTime(elapsed);
+    // Start duration timer — update live row time and header indicator
+    currentSession.durationIntervalId = setInterval(() => {
+      const elapsed = (Date.now() - currentSession.startTime) / 1000;
+      const t = formatTime(elapsed);
+      const liveTime = $('liveRecTime');
+      if (liveTime) liveTime.textContent = t;
+      const headerTime = $('headerRecTime');
+      if (headerTime) headerTime.textContent = t;
     }, 500);
 
     // Take initial screenshot once video is ready
@@ -1361,7 +2166,7 @@ async function startSession() {
       // Wait a beat for the stream to deliver its first frame
       await new Promise(r => setTimeout(r, 500));
       try {
-        await captureScreenshot();
+        await captureScreenshot(currentSession);
       } catch (e) {
         log(`Initial screenshot failed: ${e.message}`, 'error');
       }
@@ -1374,7 +2179,7 @@ async function startSession() {
 
     // Handle screen share ending
     screenStream.getVideoTracks()[0].onended = () => {
-      if (isRecording) stopSession();
+      if (currentSession && currentSession.isRecording) stopSession();
     };
 
     log('Session started', 'success');
@@ -1387,28 +2192,47 @@ async function startSession() {
 
 // ── Stop session ──
 async function stopSession() {
-  if (!isRecording) return;
+  if (!currentSession || !currentSession.isRecording) return;
+  currentSession.isRecording = false;  // SET BEFORE any await — blocks re-entrant calls
 
-  // Take final screenshot BEFORE clearing the recording flag
-  await captureScreenshot();
+  // Capture reference so closures below stay bound to this session
+  const session = currentSession;
 
-  isRecording = false;
+  // Take final screenshot. captureScreenshot guards on session.isRecording, so
+  // we momentarily re-enable it just for this call. Any concurrent call to
+  // stopSession already returned at the guard above.
+  session.isRecording = true;
+  await captureScreenshot(session);
+  session.isRecording = false;
 
-  // Stop chunk rotation
-  clearInterval(chunkRotationId);
-  clearInterval(durationIntervalId);
-  clearInterval(screenshotIntervalId);
-  clearInterval(statusStripIntervalId);
+  // Close any open speech span
+  if (isSpeaking) {
+    const endTime = (Date.now() - sessionStartTime) / 1000;
+    const spans = session.speechSpans;
+    if (spans.length > 0 && spans[spans.length - 1].end === null) {
+      spans[spans.length - 1].end = endTime;
+    }
+    isSpeaking = false;
+    speechOnsetTime = 0;
+    speechOffsetTime = 0;
+    updateSpeechIndicator(false);
+  }
+
+  // Stop chunk rotation and timers
+  clearInterval(session.chunkRotationId);
+  clearInterval(session.durationIntervalId);
+  clearInterval(session.screenshotIntervalId);
+  clearInterval(session.statusStripIntervalId);
 
   // Finalize the last chunk
   if (chunkRecorder && chunkRecorder.state === 'recording') {
     const partsSnapshot = chunkAudioParts;
     const startSnapshot = chunkStartTime;
-    chunkCount++;
-    const chunkNum = chunkCount;
+    session.chunkCount++;
+    const chunkNum = session.chunkCount;
 
     // Insert placeholder for final chunk
-    insertSTTPlaceholder(chunkNum, startSnapshot);
+    insertSTTPlaceholder(chunkNum, startSnapshot, session.timelineEl);
 
     chunkRecorder.stop();
     await new Promise(resolve => {
@@ -1418,8 +2242,8 @@ async function stopSession() {
         const blob = new Blob(partsSnapshot, { type: mimeType });
 
         if (blob.size >= 1000) {
-          const p = transcribeChunk(blob, ext, startSnapshot, chunkNum);
-          pendingTranscriptions.push(p);
+          const p = transcribeChunk(blob, ext, startSnapshot, chunkNum, session);
+          session.pendingTranscriptions.push(p);
           p.then(resolve);
         } else {
           resolve();
@@ -1432,64 +2256,261 @@ async function stopSession() {
   screenStream.getTracks().forEach(t => t.stop());
   // Don't stop mic — we might reuse it
 
-  log(`Session stopped. ${screenshots.length} screenshots, ${chunkCount} audio chunks.`);
+  log(`Session stopped. ${session.screenshots.length} screenshots, ${session.chunkCount} audio chunks.`);
+
+  // ── Lifecycle: Recording → Transcribing ──
+  const liveStatusEl = $('liveStatusIndicator');
+  if (liveStatusEl) {
+    liveStatusEl.innerHTML = '<span class="status-dot transcribing"></span><span style="font-size:0.7rem;color:#f59e0b;">Transcribing audio...</span>';
+  }
 
   // Wait for all pending transcriptions
-  await Promise.allSettled(pendingTranscriptions);
-  log(`All ${transcribedCount} chunks transcribed.`, 'success');
+  await Promise.allSettled(session.pendingTranscriptions);
+  log(`All ${session.transcribedCount} chunks transcribed.`, 'success');
 
   // Sort segments by start time (chunks may complete out of order)
-  transcriptSegments.sort((a, b) => a.start - b.start);
+  session.transcriptSegments.sort((a, b) => a.start - b.start);
 
   // Build output (no audio in ZIP)
-  const markdown = buildMarkdown(transcriptSegments);
-  zipBlob = await buildZip(markdown);
+  const markdown = buildMarkdown(session.transcriptSegments, session);
+  session.zipBlob = await buildZip(markdown, session);
+
+  // ── Lifecycle: Transcribing → Summarizing (update indicator before save) ──
+  const liveStatusEl2 = $('liveStatusIndicator');
+  if (liveStatusEl2) {
+    liveStatusEl2.innerHTML = '<span class="status-dot summarizing"></span><span style="font-size:0.7rem;color:#60a5fa;">Generating summary...</span>';
+  }
 
   // Auto-save to server
-  savedPath = (await saveToServer(markdown)) || '';
+  session.savedPath = (await saveToServer(markdown, session)) || '';
 
   // Calculate duration
-  const duration = (Date.now() - sessionStartTime) / 1000;
+  const duration = (Date.now() - session.startTime) / 1000;
 
-  // Populate done bar (replaces recording header, timeline stays)
-  const doneBarSummary = $('doneBarSummary');
-  if (doneBarSummary) doneBarSummary.textContent = `${screenshots.length} img, ${transcribedCount} stt, ${formatTime(duration)}`;
-
-  const doneBarPath = $('doneBarPath');
-  if (doneBarPath) doneBarPath.textContent = savedPath || 'ZIP ready';
-
-  // Also populate the standalone done view elements (for backward compat)
-  const summary = $('doneSummary');
-  if (summary) summary.textContent = `${screenshots.length} screenshots, ${transcribedCount} transcript chunks, ${formatTime(duration)} duration`;
-  const pathText = $('donePathText');
-  if (pathText) pathText.textContent = savedPath || 'ZIP ready for download';
-
-  if (savedPath) {
-    log(`Session saved to: ${savedPath}`, 'success');
+  if (session.savedPath) {
+    log('Session saved to: ' + session.savedPath, 'success');
   } else {
     log('ZIP ready for download (server save failed)', 'success');
   }
 
-  switchState('done');
+  // ── Transition live row to saved state ──
+  const liveRow = $('liveSessionRow');
+  if (liveRow) {
+    // Remove live styling
+    liveRow.classList.remove('live');
+    liveRow.id = '';
 
-  // Show retroactive ticket prompt if no ticket was set
-  if (!($('ticketId') && $('ticketId').value.trim())) {
-    const retro = $('retroTicket');
-    if (retro) { retro.style.display = 'flex'; }
-    const retroInput = $('retroTicketId');
-    if (retroInput) retroInput.focus();
+    // Replace live-header with a saved session header
+    const oldHeader = liveRow.querySelector('.live-header');
+    if (oldHeader) {
+      const savedHeader = createEl('div', 'session-row-header');
+
+      // Placeholder thumbnail (no hero until summary.json available)
+      const heroPlaceholder = createEl('div', 'row-hero-placeholder');
+      heroPlaceholder.textContent = '--';
+      heroPlaceholder.className = 'row-hero-placeholder';
+      savedHeader.appendChild(heroPlaceholder);
+
+      const rowInfo = createEl('div', 'row-info');
+      const date = new Date(session.startTime);
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+                      date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const stats = formatTime(duration) + ' · ' + session.screenshots.length + ' img · ' + session.transcribedCount + ' stt';
+
+      const line1 = createEl('div', 'row-info-line1');
+      // Status indicator element for post-save lifecycle updates
+      const statusIndicatorInRow = createEl('span', 'status-indicator');
+      statusIndicatorInRow.innerHTML = '<span class="status-dot summarizing"></span>';
+      line1.appendChild(statusIndicatorInRow);
+      line1.appendChild(createEl('span', 'row-timestamp', dateStr));
+      if (session.ticketId) {
+        line1.appendChild(createEl('span', 'ticket-badge', session.ticketId));
+      }
+      line1.appendChild(createEl('span', 'row-stats', stats));
+      rowInfo.appendChild(line1);
+      // Line 2: summary placeholder text (updated when summary arrives)
+      rowInfo.appendChild(createEl('div', 'row-info-line2', 'Generating summary...'));
+      savedHeader.appendChild(rowInfo);
+      savedHeader.appendChild(createEl('span', 'row-chevron', '\u25B8'));
+
+      oldHeader.replaceWith(savedHeader);
+
+      // Make the timeline container the detail area
+      const liveTimeline = liveRow.querySelector('.live-timeline');
+      if (liveTimeline) {
+        liveTimeline.className = 'detail-timeline';
+        // Wrap in detail section
+        const detailSection = createEl('div', 'session-detail');
+        const detailSummary = createEl('div', 'detail-summary');
+        const detailInfo = createEl('div', 'detail-info');
+        const statusText = createEl('div', 'detail-summary-text', 'Generating summary...');
+        // Show savedPath immediately — visible before summarization completes
+        const pathEl = createEl('div', 'detail-path', session.savedPath || '(save failed)');
+        const actionsEl = createEl('div', 'detail-actions');
+        const copyBtn = createEl('button', '', 'Copy path');
+        copyBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const p = session.savedPath || '';
+          navigator.clipboard.writeText(p).catch(() => {});
+        });
+        const dlBtn = createEl('button', '', 'Download ZIP');
+        dlBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadZip(session);
+        });
+        actionsEl.appendChild(copyBtn);
+        actionsEl.appendChild(dlBtn);
+        detailInfo.appendChild(statusText);
+        detailInfo.appendChild(pathEl);
+        detailInfo.appendChild(actionsEl);
+        detailSummary.appendChild(detailInfo);
+        detailSection.appendChild(detailSummary);
+        liveTimeline.parentNode.insertBefore(detailSection, liveTimeline);
+        detailSection.appendChild(liveTimeline);
+        // Make expanded so timeline stays visible
+        liveRow.classList.add('expanded');
+      }
+
+      // Click to toggle expand
+      savedHeader.addEventListener('click', () => {
+        liveRow.classList.toggle('expanded');
+      });
+    }
+
+    // Set a dataset attribute so pollForSummary can find this row
+    if (session.savedPath) {
+      // Extract session name from path (e.g. "sessions/feedbacks-2026-..." → "feedbacks-2026-...")
+      const parts = session.savedPath.split('/');
+      const sessionName = parts[parts.length - 1] || parts[parts.length - 2] || '';
+      if (sessionName) {
+        liveRow.dataset.sessionName = sessionName;
+        pollForSummary(sessionName, liveRow);
+      }
+    }
   }
+
+  // Re-enable New Capture button
+  const newCaptureBtn = $('newCaptureBtn');
+  if (newCaptureBtn) { newCaptureBtn.disabled = false; newCaptureBtn.textContent = 'New Capture'; }
+
+  // Hide header recording indicator
+  const recIndicator = $('headerRecIndicator');
+  if (recIndicator) recIndicator.classList.remove('active');
+
+  // Un-dim past rows
+  document.querySelectorAll('.session-row').forEach(r => r.classList.remove('dimmed'));
+}
+
+// ── Summary polling after save ──
+function pollForSummary(sessionName, rowEl) {
+  const delays = [3000, 3000, 5000, 5000, 10000, 10000, 15000];
+  let attempt = 0;
+
+  function poll() {
+    if (attempt >= delays.length) {
+      // Timeout — show "Summary unavailable" with retry button
+      const statusEl = rowEl.querySelector('.status-indicator');
+      if (statusEl) {
+        statusEl.innerHTML = '';
+        const unavailLabel = createEl('span', '', 'Summary unavailable');
+        unavailLabel.style.cssText = 'color:#f59e0b;font-size:0.7rem;';
+        const retryBtn = createEl('button', '', 'Retry');
+        retryBtn.style.cssText = 'font-size:0.65rem;padding:0.1rem 0.3rem;margin-left:0.25rem;';
+        retryBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          attempt = 0;
+          statusEl.innerHTML = '<span class="status-dot summarizing"></span>';
+          poll();
+        });
+        statusEl.appendChild(unavailLabel);
+        statusEl.appendChild(retryBtn);
+      }
+      const line2 = rowEl.querySelector('.row-info-line2');
+      if (line2 && line2.textContent === 'Generating summary...') {
+        line2.textContent = 'Summary unavailable';
+      }
+      // Reload session list so the row gets proper data if user opens later
+      loadSessions();
+      return;
+    }
+    setTimeout(async () => {
+      try {
+        const resp = await fetch('/sessions');
+        const sessions = await resp.json();
+        const session = sessions.find(s => s.name === sessionName);
+        if (session && session.summary && session.status === 'done' && !session.summaryError) {
+          updateRowWithSummary(rowEl, session);
+          loadedSessions = sessions;  // update cache
+        } else {
+          attempt++;
+          poll();
+        }
+      } catch (e) {
+        attempt++;
+        poll();
+      }
+    }, delays[attempt]);
+  }
+  poll();
+}
+
+function updateRowWithSummary(rowEl, session) {
+  // Update hero image in row header
+  const heroEl = rowEl.querySelector('.row-hero, .row-hero-placeholder');
+  if (heroEl && session.heroImage) {
+    const img = document.createElement('img');
+    img.className = 'row-hero';
+    img.src = '/sessions/' + session.name + '/images/' + session.heroImage;
+    img.alt = '';
+    heroEl.replaceWith(img);
+  }
+
+  // Update collapsed row summary text (line 2)
+  const line2 = rowEl.querySelector('.row-info-line2');
+  if (line2) line2.textContent = session.summary || '';
+
+  // Update status indicator in header — done state
+  const statusEl = rowEl.querySelector('.status-indicator');
+  if (statusEl) {
+    statusEl.innerHTML = '<span class="status-dot done"></span>';
+  }
+
+  // Update expanded detail summary text
+  const detailText = rowEl.querySelector('.detail-summary-text');
+  if (detailText) detailText.textContent = session.summary || '';
+
+  // Update expanded detail hero image
+  if (session.heroImage) {
+    const detailHero = rowEl.querySelector('.detail-hero');
+    if (detailHero) {
+      detailHero.src = '/sessions/' + session.name + '/images/' + session.heroImage;
+    } else {
+      // If detail-summary doesn't have a hero yet, prepend one
+      const detailSummary = rowEl.querySelector('.detail-summary');
+      if (detailSummary) {
+        const heroImg = createEl('img', 'detail-hero');
+        heroImg.src = '/sessions/' + session.name + '/images/' + session.heroImage;
+        heroImg.alt = '';
+        detailSummary.insertBefore(heroImg, detailSummary.firstChild);
+      }
+    }
+  }
+
+  log('Summary loaded for ' + session.name, 'success');
 }
 
 // ── Build markdown ──
-function buildMarkdown(segments) {
-  const date = new Date(sessionStartTime).toISOString().slice(0, 16).replace('T', ' ');
-  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
+function buildMarkdown(segments, session) {
+  session = session || currentSession;
+  const date = new Date(session.startTime).toISOString().slice(0, 16).replace('T', ' ');
+  const ticketId = session.ticketId;
   let md = `# Feedback Session — ${date}\n`;
   if (ticketId) md += `Ticket: ${ticketId}\n`;
   md += '\n';
 
-  if (screenshots.length === 0) {
+  const shots = session.screenshots;
+
+  if (shots.length === 0) {
     md += '> No screenshots captured.\n\n';
     for (const seg of segments) {
       md += `## ${formatTime(seg.start)} - ${formatTime(seg.end)}\n\n`;
@@ -1498,62 +2519,125 @@ function buildMarkdown(segments) {
     return md;
   }
 
-  for (let i = 0; i < screenshots.length; i++) {
-    const shot = screenshots[i];
-    const nextShot = screenshots[i + 1];
-    const startT = shot.timestamp;
-    const endT = nextShot ? nextShot.timestamp : Infinity;
+  // ── Speech-span-based layout (when VAD data available) ──
+  if (session.speechSpans && session.speechSpans.length > 0) {
+    // Build a timeline of alternating speech/silence intervals
+    const spans = session.speechSpans.filter(s => s.end !== null);
+    const sessionEnd = shots.length > 0 ? shots[shots.length - 1].timestamp + 1 : 0;
 
-    md += `## ${formatTime(startT)}`;
-    if (nextShot) md += ` - ${formatTime(endT)}`;
+    // Build intervals: [silence, speech, silence, speech, ...]
+    const intervals = [];
+    let cursor = 0;
+    for (const span of spans) {
+      if (span.start > cursor + 0.5) {
+        intervals.push({ type: 'context', start: cursor, end: span.start });
+      }
+      intervals.push({ type: 'speech', start: span.start, end: span.end });
+      cursor = span.end;
+    }
+    if (cursor < sessionEnd) {
+      intervals.push({ type: 'context', start: cursor, end: sessionEnd });
+    }
+
+    for (const interval of intervals) {
+      // Find screenshots in this interval
+      const intervalShots = [];
+      for (let i = 0; i < shots.length; i++) {
+        if (shots[i].timestamp >= interval.start - 0.5 && shots[i].timestamp < interval.end + 0.5) {
+          intervalShots.push(i);
+        }
+      }
+
+      // Find transcript segments in this interval
+      const intervalSegs = segments.filter(seg =>
+        seg.start >= interval.start - 1 && seg.end <= interval.end + 1
+      );
+
+      if (interval.type === 'speech') {
+        md += `## ${formatTime(interval.start)} – ${formatTime(interval.end)}\n\n`;
+        for (const idx of intervalShots) {
+          md += `![Screenshot ${idx + 1}](./images/${String(idx + 1).padStart(3, '0')}.png)\n\n`;
+          const shot = shots[idx];
+          if (shot.clickPoint) {
+            md += `**[Marker ${shot.clickPoint.marker} — user clicked at (${shot.clickPoint.x}, ${shot.clickPoint.y})]**\n\n`;
+          } else if (shot.boundingBox) {
+            md += `**[Marker ${shot.boundingBox.marker} — user selected region (${shot.boundingBox.x1},${shot.boundingBox.y1})→(${shot.boundingBox.x2},${shot.boundingBox.y2})]**\n\n`;
+          }
+        }
+        for (const seg of intervalSegs) {
+          if (seg.text.trim()) md += `> ${seg.text.trim()}\n\n`;
+        }
+      } else {
+        // Context (silence) — show one representative screenshot
+        if (intervalShots.length > 0) {
+          const repIdx = intervalShots[Math.floor(intervalShots.length / 2)]; // middle frame
+          md += `## ${formatTime(interval.start)} – ${formatTime(interval.end)} [context]\n\n`;
+          md += `![Screenshot ${repIdx + 1}](./images/${String(repIdx + 1).padStart(3, '0')}.png)\n\n`;
+          if (intervalShots.length > 1) {
+            md += `<!-- ${intervalShots.length - 1} similar frames hidden -->\n\n`;
+          }
+        }
+      }
+    }
+    return md;
+  }
+
+  // ── Fallback: assign each transcript to closest screenshot by midpoint ──
+  const segAssignments = new Map();
+  for (const seg of segments) {
+    const segMid = (seg.start + seg.end) / 2;
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < shots.length; i++) {
+      const dist = Math.abs(shots[i].timestamp - segMid);
+      if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+    }
+    if (!segAssignments.has(bestIdx)) segAssignments.set(bestIdx, []);
+    segAssignments.get(bestIdx).push(seg);
+  }
+
+  for (let i = 0; i < shots.length; i++) {
+    const shot = shots[i];
+    const nextShot = shots[i + 1];
+    md += `## ${formatTime(shot.timestamp)}`;
+    if (nextShot) md += ` - ${formatTime(nextShot.timestamp)}`;
     md += `\n\n`;
-
     md += `![Screenshot ${i + 1}](./images/${String(i + 1).padStart(3, '0')}.png)\n\n`;
-
-    // Marker annotation
     if (shot.clickPoint) {
       md += `**[Marker ${shot.clickPoint.marker} — user clicked at (${shot.clickPoint.x}, ${shot.clickPoint.y})]**\n\n`;
     } else if (shot.boundingBox) {
       md += `**[Marker ${shot.boundingBox.marker} — user selected region (${shot.boundingBox.x1},${shot.boundingBox.y1})→(${shot.boundingBox.x2},${shot.boundingBox.y2})]**\n\n`;
     }
-
-    // Find overlapping transcript segments
-    const overlapping = segments.filter(seg =>
-      seg.start < endT && seg.end > startT
-    );
-
-    if (overlapping.length > 0) {
-      for (const seg of overlapping) {
-        md += `> ${seg.text.trim()}\n\n`;
-      }
+    const assigned = segAssignments.get(i) || [];
+    for (const seg of assigned) {
+      if (seg.text.trim()) md += `> ${seg.text.trim()}\n\n`;
     }
   }
-
   return md;
 }
 
 // ── Build ZIP (no audio) ──
-async function buildZip(markdown) {
+async function buildZip(markdown, session) {
+  session = session || currentSession;
   const zip = new JSZip();
   zip.file('session.md', markdown);
 
   const imgFolder = zip.folder('images');
-  for (let i = 0; i < screenshots.length; i++) {
-    const dataUrl = screenshots[i].dataUrl;
+  for (let i = 0; i < session.screenshots.length; i++) {
+    const dataUrl = session.screenshots[i].dataUrl;
     const base64 = dataUrl.split(',')[1];
     imgFolder.file(`${String(i + 1).padStart(3, '0')}.png`, base64, { base64: true });
   }
 
   // Build session player
-  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
   const sessionData = {
-    date: new Date(sessionStartTime).toISOString(),
-    ticketId: ticketId || null,
-    slides: screenshots.map((shot, i) => {
-      const nextShot = screenshots[i + 1];
+    date: new Date(session.startTime).toISOString(),
+    ticketId: session.ticketId || null,
+    slides: session.screenshots.map((shot, i) => {
+      const nextShot = session.screenshots[i + 1];
       const startT = shot.timestamp;
       const endT = nextShot ? nextShot.timestamp : startT + 5;
-      const transcript = transcriptSegments
+      const transcript = session.transcriptSegments
         .filter(seg => seg.start < endT && seg.end > startT)
         .map(seg => seg.text.trim())
         .join(' ');
@@ -1579,21 +2663,22 @@ async function buildZip(markdown) {
 }
 
 // ── Save session to server filesystem ──
-async function saveToServer(markdown) {
+async function saveToServer(markdown, session) {
+  session = session || currentSession;
   try {
-    const ts = new Date(sessionStartTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
-    const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
+    const ts = new Date(session.startTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    const ticketId = session.ticketId;
     const name = ticketId ? `feedbacks-${ticketId}-${ts}` : `feedbacks-${ts}`;
 
     // Build player HTML for saving
     const sessionData = {
-      date: new Date(sessionStartTime).toISOString(),
+      date: new Date(session.startTime).toISOString(),
       ticketId: ticketId || null,
-      slides: screenshots.map((shot, i) => {
-        const nextShot = screenshots[i + 1];
+      slides: session.screenshots.map((shot, i) => {
+        const nextShot = session.screenshots[i + 1];
         const startT = shot.timestamp;
         const endT = nextShot ? nextShot.timestamp : startT + 5;
-        const transcript = transcriptSegments
+        const transcript = session.transcriptSegments
           .filter(seg => seg.start < endT && seg.end > startT)
           .map(seg => seg.text.trim())
           .join(' ');
@@ -1607,15 +2692,22 @@ async function saveToServer(markdown) {
       })
     };
 
+    const duration = formatTime((Date.now() - session.startTime) / 1000);
+
     const payload = {
       name,
       markdown,
       player: buildPlayerHtml(sessionData),
-      images: screenshots.map((shot, i) => ({
+      images: session.screenshots.map((shot, i) => ({
         filename: `${String(i + 1).padStart(3, '0')}.png`,
         base64: shot.dataUrl.split(',')[1]
       })),
-      log: logHistory.join('\n')
+      log: logHistory.join('\n'),
+      ticketId: session.ticketId,
+      startTime: new Date(session.startTime).toISOString(),
+      duration,
+      sttCount: session.transcriptSegments.length,
+      speechSpans: session.speechSpans.filter(s => s.end !== null)
     };
 
     log('Saving to server...');
@@ -1817,13 +2909,13 @@ show(0);
 }
 
 // ── Download ──
-function downloadZip() {
-  if (!zipBlob) return;
-  const url = URL.createObjectURL(zipBlob);
+function downloadZip(sess) {
+  const session = sess || currentSession;
+  if (!session || !session.zipBlob) return;
+  const url = URL.createObjectURL(session.zipBlob);
   const a = document.createElement('a');
-  const ts = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  const ticketId = $('ticketId') ? $('ticketId').value.trim() : '';
-  const prefix = ticketId ? `feedbacks-${ticketId}-` : 'feedbacks-';
+  const ts = new Date(session.startTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
+  const prefix = session.ticketId ? `feedbacks-${session.ticketId}-` : 'feedbacks-';
   a.href = url;
   a.download = `${prefix}${ts}.zip`;
   a.click();
@@ -1849,63 +2941,32 @@ function getSupportedMimeType() {
 function cleanup() {
   if (screenStream) screenStream.getTracks().forEach(t => t.stop());
   if (micStreamRef) micStreamRef.getTracks().forEach(t => t.stop());
-  clearInterval(durationIntervalId);
-  clearInterval(chunkRotationId);
-  clearInterval(screenshotIntervalId);
-  clearInterval(statusStripIntervalId);
+  if (currentSession) {
+    clearInterval(currentSession.durationIntervalId);
+    clearInterval(currentSession.chunkRotationId);
+    clearInterval(currentSession.screenshotIntervalId);
+    clearInterval(currentSession.statusStripIntervalId);
+    currentSession.isRecording = false;
+  }
   stopMicMeter();
-  isRecording = false;
 }
 
 // ── Init ──
+// Start whisper health check targeting header elements
 checkWhisper();
 whisperCheckId = setInterval(checkWhisper, 5000);
-initMicPreview();
-const savedApiKey = localStorage.getItem('feedbacks_api_key');
-if (savedApiKey && $('apiKey')) $('apiKey').value = savedApiKey;
-if ($('apiKey')) $('apiKey').addEventListener('change', () => {
-  localStorage.setItem('feedbacks_api_key', $('apiKey').value);
-});
-// Ticket ID: query param > localStorage
-const _urlTicket = new URLSearchParams(location.search).get('ticket');
-if (_urlTicket && $('ticketId')) {
-  $('ticketId').value = _urlTicket.trim().toUpperCase();
-  $('ticketId').readOnly = true;
-  showTicketBadge('From /review');
-} else {
-  const savedTicket = localStorage.getItem('feedbacks_ticket_id');
-  if (savedTicket && $('ticketId')) { $('ticketId').value = savedTicket; showTicketBadge('Linked'); }
-}
-if ($('ticketId')) $('ticketId').addEventListener('change', function() {
-  const val = this.value.trim().toUpperCase();
-  this.value = val;
-  if (val) { localStorage.setItem('feedbacks_ticket_id', val); showTicketBadge('Linked'); }
-  else { localStorage.removeItem('feedbacks_ticket_id'); showTicketBadge(''); }
-});
 
-function showTicketBadge(text) {
-  const id = $('ticketId') ? $('ticketId').value.trim() : '';
-  const badge = $('ticketBadge');
-  if (badge) { badge.textContent = text; badge.style.display = id ? '' : 'none'; }
-  const clear = $('ticketClear');
-  if (clear) { clear.style.display = id ? '' : 'none'; }
+// Initialize mic preview
+initMicPreview();
+
+// Load existing sessions into list
+loadSessions();
+
+// Pre-fill capture ticket from URL query param
+const _urlTicket = new URLSearchParams(location.search).get('ticket');
+if (_urlTicket && $('captureTicketId')) {
+  $('captureTicketId').value = _urlTicket.trim().toUpperCase();
 }
-function clearTicketId() {
-  if ($('ticketId')) { $('ticketId').value = ''; $('ticketId').readOnly = false; }
-  localStorage.removeItem('feedbacks_ticket_id');
-  showTicketBadge('');
-}
-// Retroactive ticket linking (after session ends without a ticket)
-if ($('retroTicketId')) $('retroTicketId').addEventListener('change', function() {
-  const val = this.value.trim().toUpperCase();
-  if (val && $('ticketId')) {
-    $('ticketId').value = val;
-    localStorage.setItem('feedbacks_ticket_id', val);
-    showTicketBadge('Linked');
-    if ($('retroTicket')) $('retroTicket').style.display = 'none';
-    log(`Ticket ${val} linked retroactively`);
-  }
-});
 </script>
 </body>
 </html>

@@ -55,11 +55,12 @@ FEEDBACKS_OUTPUT_DIR=./my-sessions python3 server.py # custom output directory
 
 ## Usage
 
-1. **Start Session** — grants screen share + microphone
-2. **Switch to the app** you want to review
+1. **New Capture** — click the button (or the dropdown ▾ to set a ticket ID first)
+2. **Share your screen** — Chrome's native share dialog opens immediately
 3. **Talk and point** — move your cursor to things as you narrate. Screenshots auto-capture every second when the screen changes.
-4. **Switch back** to the feedbacks tab and click **Stop**
-5. **Copy the path** to clipboard or download the ZIP
+4. **Voice activity detection** — audio chunks are only sent to whisper when you're speaking. Silence is ignored, eliminating hallucinations. The recording row glows green when your voice is detected.
+5. **Switch back** to the feedbacks tab and click **Stop**
+6. **Copy the path** to clipboard or download the ZIP
 
 Screenshots include your cursor position (baked in by the browser's screen capture API), so when you say "this area here" while pointing, the screenshot shows exactly where you meant.
 
@@ -186,7 +187,22 @@ Browser (index.html)                    server.py (:8080)
 - Screenshots dedup via horizontal strip comparison — static pages don't generate duplicate images
 - Force-capture every 5s ensures minimum coverage even on static pages
 - Audio recorded as WebM/Opus, converted to WAV server-side via ffmpeg (whisper.cpp doesn't accept WebM)
-- Transcription uses `initial_prompt` with previous context for continuity between 10s chunks
+- Voice Activity Detection (VAD) drives audio chunk boundaries — speech start/end detected via WebAudio frequency analysis
+- Server-side Silero VAD + `--suppress-nst` as additional whisper hallucination prevention
+
+## Transcription Quality
+
+Whisper hallucinations (generating text from silence) are mitigated by a multi-layer stack:
+
+1. **Client-side VAD** — audio chunks only recorded when speech is detected (energy threshold + onset/offset delays)
+2. **Server-side Silero VAD** — whisper-server rejects non-speech audio before transcription
+3. **No prompt seeding** — previous transcript is not fed back as context (prevents hallucination cascades)
+4. **Hallucination blocklist** — known phantom phrases ("Thank you for watching", "Please subscribe", etc.) are dropped
+5. **Repeated-output detection** — if the same text appears 3+ times in a chunk, the entire chunk is discarded
+
+When filters activate, a `⚠ Filtered` entry appears in the timeline so you know it happened.
+
+See `docs/decisions/001-whisper-initial-prompt.md` for the full rationale.
 
 ## Whisper Models
 

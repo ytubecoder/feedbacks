@@ -12,11 +12,15 @@ import http.server
 import json
 import base64
 import os
+import re
+import shutil
 import sys
 import signal
 import subprocess
+import threading
 import time
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -26,6 +30,58 @@ WHISPER_PORT = 8081
 OUTPUT_DIR = os.environ.get("FEEDBACKS_OUTPUT_DIR", str(SCRIPT_DIR / "sessions"))
 
 whisper_process = None
+
+
+def parse_session_md(md_path):
+    """Parse session.md into structured timeline segments."""
+    segments = []
+    current = None
+    try:
+        text = md_path.read_text(encoding="utf-8")
+    except Exception:
+        return segments
+
+    for line in text.splitlines():
+        line_stripped = line.strip()
+
+        # Timestamp heading: ## 0:07 - 0:11  or  ## 0:07 – 0:11 [context]  or  ## 0:09
+        m = re.match(r'^##\s+(\d+:\d+)(?:\s*[-–]\s*(\d+:\d+))?(?:\s*\[context\])?\s*$', line_stripped)
+        if m:
+            if current is not None:
+                segments.append(current)
+            is_context = '[context]' in line_stripped
+            current = {"time": m.group(1), "timeEnd": m.group(2), "image": None, "marker": None, "transcript": [], "context": is_context}
+            continue
+
+        if current is None:
+            continue
+
+        # Image: ![Screenshot N](./images/NNN.png)
+        m = re.match(r'^!\[.*?\]\(\./images/([\w.-]+)\)$', line_stripped)
+        if m:
+            current["image"] = m.group(1)
+            continue
+
+        # Marker: **[Marker N — ...]**
+        m = re.match(r'^\*\*\[Marker\s+(\d+)\s*[—–-]\s*(.*?)\]\*\*$', line_stripped)
+        if m:
+            current["marker"] = {"number": int(m.group(1)), "description": m.group(2)}
+            continue
+
+        # Transcript: > text
+        if line_stripped.startswith('> '):
+            txt = line_stripped[2:].strip()
+            if txt and txt not in ('(no speech detected)', '[pause]'):
+                current["transcript"].append(txt)
+
+    if current is not None:
+        segments.append(current)
+
+    # Join transcript lines, convert empty lists to None
+    for seg in segments:
+        seg["transcript"] = " ".join(seg["transcript"]) if seg["transcript"] else None
+
+    return segments
 
 
 # ── Whisper management ──
@@ -141,11 +197,29 @@ def start_whisper(port):
             print("Continuing without local STT — use OpenAI API key in the UI as fallback")
             return None
 
-    print(f"Starting whisper-server on :{port} with {Path(model).name}...")
+    # Check for VAD model (Silero) to reduce hallucinations on silent audio
+    vad_model = None
+    for vad_candidate in [
+        SCRIPT_DIR / "whisper.cpp" / "models" / "silero-v6.2.0-ggml.bin",
+        SCRIPT_DIR / "whisper.cpp" / "models" / "for-tests-silero-v6.2.0-ggml.bin",
+    ]:
+        if vad_candidate.exists():
+            vad_model = str(vad_candidate)
+            break
+
+    cmd = [server_bin, "-m", model, "--port", str(port),
+           "--host", "127.0.0.1", "--inference-path", "/v1/audio/transcriptions",
+           "--suppress-nst",                # suppress non-speech tokens
+           "--no-speech-thold", "0.5",      # stricter no-speech threshold (default 0.6)
+           ]
+    if vad_model:
+        cmd.extend(["--vad", "--vad-model", vad_model, "--vad-threshold", "0.5"])
+        print(f"Starting whisper-server on :{port} with {Path(model).name} + VAD...")
+    else:
+        print(f"Starting whisper-server on :{port} with {Path(model).name} (no VAD model found)...")
+
     whisper_process = subprocess.Popen(
-        [server_bin, "-m", model, "--port", str(port),
-         "--host", "127.0.0.1", "--inference-path", "/v1/audio/transcriptions"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
 
     # Wait for it to come up
@@ -179,6 +253,57 @@ def stop_whisper():
         whisper_process = None
 
 
+# ── Summarization ──
+
+def _summarize_session(session_dir, markdown_text, image_count):
+    """Run Claude to generate a summary and hero image selection for a session."""
+    if not shutil.which("claude"):
+        fallback = {
+            "error": "claude CLI not found on PATH",
+            "summary": "Summary unavailable (claude CLI not installed)",
+            "heroImage": "001.png",
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+        (session_dir / "summary.json").write_text(json.dumps(fallback), encoding="utf-8")
+        print("Warning: 'claude' not on PATH — skipping AI summarization.")
+        return
+    image_list = ", ".join(f"{i+1:03d}.png" for i in range(image_count)) if image_count else "none"
+    prompt = (
+        "You are summarizing a screen-capture feedback session.\n\n"
+        f"Session transcript (markdown):\n{markdown_text}\n\n"
+        f"Available screenshots: {image_list}\n\n"
+        "IMPORTANT: Describe ONLY what is literally visible in the screenshots and spoken in the transcript. "
+        "Do NOT infer actions that aren't shown (e.g. don't say 'user searched for X' unless a search action is visible — "
+        "seeing search results only means results are visible, not that the search was performed during this session). "
+        "Stick to what is on screen: what page/app is shown, what content is visible, what the user said.\n\n"
+        "Return ONLY a JSON object (no markdown fences) with exactly two keys:\n"
+        '  "heroImage": the filename of the most visually informative screenshot (e.g. "003.png"),\n'
+        '  "summary": a 1-2 sentence factual description of what is shown in this session.\n'
+        "If there are no screenshots, use \"001.png\" as heroImage.\n"
+        "Example: {\"heroImage\": \"004.png\", \"summary\": \"A bug backlog dashboard is shown with five open tickets. The user comments on alignment issues in the header.\"}"
+    )
+    generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    try:
+        result = subprocess.run(
+            ["claude", "-p", prompt],
+            capture_output=True, text=True, timeout=60
+        )
+        raw = result.stdout.strip()
+        summary_data = json.loads(raw)
+        summary_data["generatedAt"] = generated_at
+        (session_dir / "summary.json").write_text(json.dumps(summary_data), encoding="utf-8")
+        print(f"Summary written to: {session_dir / 'summary.json'}")
+    except Exception as e:
+        fallback = {
+            "error": str(e),
+            "summary": "Summary unavailable",
+            "heroImage": "001.png",
+            "generatedAt": generated_at,
+        }
+        (session_dir / "summary.json").write_text(json.dumps(fallback), encoding="utf-8")
+        print(f"Summary generation failed ({e}); fallback written.")
+
+
 # ── HTTP handler ──
 
 class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
@@ -186,6 +311,13 @@ class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/config":
             self._send_json({"outputDir": str(Path(OUTPUT_DIR).resolve())})
+            return
+        if parsed.path == "/sessions":
+            self._handle_get_sessions()
+            return
+        m = re.match(r'^/sessions/(feedbacks-[\w-]+)/images/([\w.-]+)$', parsed.path)
+        if m:
+            self._serve_session_image(m.group(1), m.group(2))
             return
         super().do_GET()
 
@@ -219,13 +351,100 @@ class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
                 img_bytes = base64.b64decode(img["base64"])
                 (images_dir / img["filename"]).write_bytes(img_bytes)
 
+            meta = {
+                "ticketId": data.get("ticketId", ""),
+                "startTime": data.get("startTime"),
+                "duration": data.get("duration"),
+                "imageCount": len(data.get("images", [])),
+                "sttCount": data.get("sttCount", 0),
+            }
+            (session_dir / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+
             saved_path = str(session_dir.resolve())
             print(f"Session saved to: {saved_path}")
             self._send_json({"ok": True, "path": saved_path})
 
+            threading.Thread(
+                target=_summarize_session,
+                args=(session_dir, data.get("markdown", ""), len(data.get("images", []))),
+                daemon=True,
+            ).start()
+
         except Exception as e:
             print(f"Save error: {e}")
             self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_get_sessions(self):
+        output_path = Path(OUTPUT_DIR)
+        sessions = []
+        for d in sorted(output_path.glob("feedbacks-*"), reverse=True):
+            if not d.is_dir():
+                continue
+            entry = {"name": d.name}
+
+            meta_file = d / "meta.json"
+            if meta_file.exists():
+                try:
+                    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                    entry.update(meta)
+                except Exception:
+                    pass
+
+            summary_file = d / "summary.json"
+            if summary_file.exists():
+                try:
+                    summary = json.loads(summary_file.read_text(encoding="utf-8"))
+                    entry["heroImage"] = summary.get("heroImage", "001.png")
+                    entry["summary"] = summary.get("summary", "")
+                    entry["generatedAt"] = summary.get("generatedAt")
+                    if summary.get("error"):
+                        entry["summaryError"] = summary["error"]
+                    entry["status"] = "done"
+                except Exception:
+                    entry["status"] = "summarizing"
+            elif meta_file.exists():
+                entry["status"] = "summarizing"
+            else:
+                entry["status"] = "pending"
+
+            # Parse session.md for timeline data
+            session_md = d / "session.md"
+            if session_md.exists():
+                entry["timeline"] = parse_session_md(session_md)
+
+            sessions.append(entry)
+
+        self._send_json(sessions)
+
+    def _serve_session_image(self, session_name, filename):
+        # Reject any path traversal attempts
+        if ".." in session_name or ".." in filename:
+            self.send_error(400, "Bad request")
+            return
+        # Validate session name and filename strictly
+        if not re.match(r'^feedbacks-[\w-]+$', session_name):
+            self.send_error(400, "Bad request")
+            return
+        if not re.match(r'^[\w.-]+$', filename):
+            self.send_error(400, "Bad request")
+            return
+
+        image_path = Path(OUTPUT_DIR) / session_name / "images" / filename
+        if not image_path.exists() or not image_path.is_file():
+            self.send_error(404, "Not found")
+            return
+
+        # Determine content type
+        suffix = image_path.suffix.lower()
+        content_type = "image/png" if suffix == ".png" else "image/jpeg" if suffix in (".jpg", ".jpeg") else "application/octet-stream"
+
+        data = image_path.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _handle_transcribe(self):
         """Proxy transcription: convert WebM→WAV via ffmpeg, forward to whisper."""
