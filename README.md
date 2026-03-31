@@ -18,10 +18,13 @@ The output is a directory of images + markdown, designed to be consumed by an LL
 
 First run installs whisper.cpp and downloads a model. Subsequent runs start the capture server. After a session, run `/feedbacks` again to analyze.
 
-To use from any project:
+### Install the Claude Code skill
+
 ```bash
-cp -r .claude/skills/feedbacks ~/.claude/skills/
+cp -r ~/projects/feedbacks/skills/feedbacks ~/.claude/skills/feedbacks
 ```
+
+This installs the `/feedbacks` command globally for Claude Code. After install, `/feedbacks` works from any project directory.
 
 ### Manual install
 
