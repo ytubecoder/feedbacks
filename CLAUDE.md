@@ -6,40 +6,60 @@ Single-page browser app (`index.html`) + Python server (`server.py`) + whisper.c
 
 ### Key Components
 
-- **`index.html`** — Complete app: capture, transcription, timeline UI, ZIP/save output, player generation
-- **`server.py`** — All-in-one launcher: starts whisper-server, serves app, provides `/save` and `/transcribe` proxy endpoints
+- **`index.html`** — Complete app: capture, VAD, transcription, timeline UI, save output, player generation
+- **`server.py`** — All-in-one launcher: starts whisper-server (with Silero VAD), serves app, provides `/save`, `/transcribe` proxy, `/sessions` API with parsed timeline data
 - **`start.sh`** — Thin wrapper that calls `server.py`
 - **`whisper.cpp/`** — Git submodule, built locally for speech-to-text
+- **`skills/feedbacks/`** — Claude Code skill (copied to `~/.claude/skills/feedbacks/` for global access)
 
 ### How It Works
 
 1. `getDisplayMedia` captures screen (VideoFrame API for actual pixel access — `drawImage` produces black on Chrome)
-2. Auto-captures screenshots every 1s with dedup (full-width horizontal strip comparison, force-capture every 5s)
-3. `MediaRecorder` records mic in 10s chunks, sent to `/transcribe` proxy which converts WebM→WAV via ffmpeg then forwards to whisper
-4. Output saved to `sessions/` directory as extracted files (session.md, player.html, images/) + optional ZIP download
+2. Auto-captures screenshots every 1s with dedup (horizontal strip comparison, force-capture every 5s)
+3. **Voice Activity Detection (VAD)** in the WebAudio analyser RAF loop detects speech start/end
+4. Audio chunks are driven by speech boundaries (not fixed intervals) — whisper only receives audio containing speech
+5. `/transcribe` proxy converts WebM→WAV via ffmpeg, forwards to whisper-server
+6. Anti-hallucination stack: no prompt seeding, blocklist, repeat detection
+7. Output saved to `sessions/` as extracted files (session.md, player.html, images/) with speech-span grouping
 
-### Three-State UI
+### UI Structure
 
-- **Setup** — Readiness checks (STT status, mic level meter), Start button
-- **Recording** — Compact header + status strip + scrolling timeline (IMG + STT entries with placeholder pattern)
-- **Done** — Header swaps to done bar with copy-path/ZIP/New Session; timeline stays visible
+- **Session list** — past sessions as expandable cards with hero thumbnails, status badges, AI summaries
+- **Capture prompt** — split button: main "New Capture" goes straight to screen share, dropdown ▾ for ticket ID
+- **Live recording** — timeline feed with IMG/STT entries, green speaking indicator, mic level meter
+- **Expanded detail** — vertical timeline spine with screenshot+transcript pairs, context frames collapsed
+
+### Anti-Hallucination Stack
+
+1. Client-side VAD — don't record silence (WebAudio energy threshold + onset/offset delays)
+2. Server-side Silero VAD — whisper-server `--vad` flag rejects non-speech audio
+3. No prompt seeding — previous transcript not fed back (prevents cascade hallucinations)
+4. Blocklist — known phantom phrases dropped (`HALLUCINATION_BLOCKLIST` in index.html)
+5. Repeat detection — same text 3+ times in a chunk → entire chunk discarded, `⚠ Filtered` shown in timeline
+
+See `docs/decisions/001-whisper-initial-prompt.md` for full rationale.
 
 ## Running
 
 ```bash
 cd ~/projects/feedbacks && python3 server.py
-# Automatically starts whisper (prefers small.en model), serves on :8080
+# Automatically starts whisper (prefers small.en model + Silero VAD), serves on :8080
 ```
 
 ## Known Issues
 
-- **VideoFrame API required** — `canvas.drawImage(video)` from getDisplayMedia produces black frames on Chrome. The app uses `MediaStreamTrackProcessor` + `VideoFrame` to read frames directly from the stream.
-- **WebM→WAV conversion** — whisper.cpp doesn't accept WebM/Opus natively. The `/transcribe` proxy converts via ffmpeg.
-- **Dedup sensitivity** — Samples a horizontal strip from the middle of the frame. Static pages with no cursor movement get deduped. Force-capture every 5s ensures minimum coverage.
-- **Cross-tab interaction** — User interacts with the shared tab, not the feedbacks page. Click-to-mark doesn't work cross-tab. Auto-capture with cursor baked into frames is the capture strategy.
+- **VideoFrame API required** — `canvas.drawImage(video)` from getDisplayMedia produces black frames on Chrome. Uses `MediaStreamTrackProcessor` + `VideoFrame` instead.
+- **WebM→WAV conversion** — whisper.cpp doesn't accept WebM/Opus. The `/transcribe` proxy converts via ffmpeg.
+- **Cross-tab interaction** — User interacts with the shared tab, not the feedbacks page. Keyboard hotkeys can't reach feedbacks from the observed app. VAD (audio-level speech detection) is the only zero-friction input method.
+- **VAD threshold tuning** — `SPEECH_THRESHOLD = 25` may need adjustment for different microphones/environments. Too low = background noise triggers. Too high = quiet speech missed.
+- **Whisper accuracy** — Even with small.en + VAD, whisper can mishear words. The transcript is always the raw whisper output, never modified. AI summary is generated separately by Claude.
 
 ## Output Directory
 
 Default: `./sessions/`. Override: `FEEDBACKS_OUTPUT_DIR=/path/to/dir python3 server.py`
 
-Each session saves to `sessions/feedbacks-{timestamp}/` with: `session.md`, `player.html`, `images/`, `debug.log`
+Each session saves to `sessions/feedbacks-{timestamp}/` with: `session.md`, `player.html`, `images/`, `debug.log`, `meta.json`, `summary.json`
+
+## Ticket Integration
+
+Optional `?ticket=B-05` query param links sessions to tickets. The `/review` skill from ticket-takeaway can pick up sessions from `docs/features/{ID}/feedbacks/`. See README.md for details.

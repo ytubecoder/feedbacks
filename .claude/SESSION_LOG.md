@@ -1,5 +1,30 @@
 # Session Log
 
+## 2026-03-31/04-01 — VAD, anti-hallucination stack, ticket integration, UI polish
+
+### Summary
+- Voice Activity Detection: speech-driven audio chunks replace fixed 10-second intervals. WebAudio energy analysis in RAF loop with onset/offset delays.
+- Anti-hallucination stack: removed prompt seeding, added blocklist (20 known phrases), repeat detection (3+ same text drops chunk). Filtered entries visible in timeline with ⚠ marker.
+- Ticket integration: `?ticket=B-05` query param, split capture button, status badges, /review skill integration for visual bug reporting.
+- UI redesign: shadcn zinc dark theme, vertical timeline spine in detail view, speech-anchored session.md grouping.
+- Literal summary prompt: Claude describes visible content only, not inferred actions.
+
+### Lessons Learned
+- **Accepted:** VAD via WebAudio frequency energy — the mic analyser was already running at 60fps for the level meter. Adding speech detection was ~30 lines of state machine code in the same RAF loop.
+- **Accepted:** Speech-driven chunks over fixed 10s intervals — sending only speech to whisper eliminates hallucinations at the source. More effective than any post-transcription filtering.
+- **Rejected:** Keyboard hotkeys for PTT — browser can't receive keystrokes when the observed app has focus. Audio-level VAD is the only zero-friction approach in a browser-only architecture.
+- **Rejected:** Sending previous transcript as whisper prompt (condition_on_previous_text) — hallucinated text cascades into next chunk's prompt, creating 28x repetition loops. Marginal continuity benefit not worth the cascade risk.
+- **Rejected:** VibeVoice (Microsoft) as whisper alternative — 7B params, needs 24GB VRAM GPU. Overkill for 10-second single-speaker chunks. whisper.cpp small.en is the right tool.
+- **Gotcha:** whisper initial_prompt "User is describing what they see on screen" was being parroted as transcript on quiet audio. The prompt text literally became the transcription output.
+- **Gotcha:** Browser caching of index.html — after code changes, server restart alone doesn't push new JS to the browser. Users must Ctrl+Shift+R to hard refresh.
+
+### Decisions
+- VAD SPEECH_THRESHOLD = 25, onset 300ms, offset 1500ms — empirically tuned. May need per-microphone adjustment.
+- Hallucination blocklist is hardcoded in index.html (not external file) — 20 entries, maintainable inline. Decision doc at docs/decisions/001-whisper-initial-prompt.md.
+- Session.md groups by speech spans when available, falls back to midpoint-assignment for pre-VAD sessions.
+- AI summary prompt explicitly forbids inference ("don't say user searched for X unless search action visible").
+- Feedbacks skill shipped from repo (`skills/feedbacks/`) with install instructions in README.
+
 ## 2026-03-30/31 — Fix black screen, add auto-save, redesign UI
 
 ### Summary
