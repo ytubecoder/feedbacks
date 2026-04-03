@@ -1,5 +1,7 @@
 sessions/
 .feedbacks/
 __pycache__/
+*.pyc
 .superpowers/
 docs/superpowers/
+whisper.cpp/
