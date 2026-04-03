@@ -1,5 +1,31 @@
 # Session Log
 
+## 2026-04-03 — MCP server for live capture streaming and session history
+
+### Summary
+- Built MCP server (`mcp_server.py`) with 4 tools: `feedbacks_sessions`, `feedbacks_session`, `feedbacks_status`, `feedbacks_poll`
+- Added live capture bridge: browser pushes incremental events (screenshots, transcripts, speech spans) to server.py via `/live-push`, MCP server polls `/live-session` to feed Claude Code
+- Saved session tools read directly from disk (no server needed), live tools require server.py running
+- Cleaned repo for public distribution: removed hardcoded paths, added LICENSE (source-available, commercial requires license), made repo public
+
+### Lessons Learned
+- **Accepted:** MCP polling over push — standard MCP is request-response (Claude calls tool, server responds). True server-initiated push isn't reliably supported in Claude Code CLI yet. Polling with incremental sequence numbers works well enough.
+- **Accepted:** Speech span events always included in poll responses regardless of `since` filter — without them, incremental polls can't group screenshots with transcripts. Structural events must bypass the filter.
+- **Accepted:** Saved session tools reading directly from disk rather than through HTTP — works even when server.py isn't running, which is the common case for reviewing past sessions.
+- **Accepted:** FastMCP `instructions` parameter for server-level context — gets injected into Claude's system prompt at session start, so Claude knows what the tools are for without needing the skill invoked.
+- **Rejected:** SSE/WebSocket MCP transport for true streaming — uncertain support in Claude Code CLI today. The server.py plumbing is the same either way; only the MCP transport layer would change.
+- **Rejected:** MCP resource subscriptions — theoretically push-based, but Claude Code's handling of unsolicited resource notifications is unreliable.
+- **Gotcha:** FastMCP constructor doesn't accept `version` parameter (unlike docs/examples suggest) — just `name` and `instructions`.
+- **Gotcha:** `pip install mcp` fails on system Python without `--break-system-packages` on Ubuntu/Debian with PEP 668 enforcement.
+- **Gotcha:** Mid-speech capture end leaves an unclosed speech span — must synthesize a closing span in `_build_timeline` using the max event time.
+
+### Decisions
+- MCP server is a separate file (`mcp_server.py`) not integrated into `server.py` — keeps concerns separate, MCP server can work without HTTP server for saved sessions.
+- Screenshots stored as files in `/tmp/feedbacks-live/` during live capture, returned as absolute paths in MCP responses — avoids bloating tool responses with base64 (200KB+ per screenshot).
+- Fire-and-forget for browser live-push (`fetch().catch(() => {})`) — live push must never block/slow the capture experience. Missing events are acceptable.
+- License changed from MIT to source-available: free for personal/non-commercial, commercial use requires separate license.
+- Repo made public on GitHub.
+
 ## 2026-03-31/04-01 — VAD, anti-hallucination stack, ticket integration, UI polish
 
 ### Summary

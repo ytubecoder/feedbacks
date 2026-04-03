@@ -8,7 +8,7 @@ Single-page browser app (`index.html`) + Python server (`server.py`) + whisper.c
 
 - **`index.html`** — Complete app: capture, VAD, transcription, timeline UI, save output, player generation
 - **`server.py`** — All-in-one launcher: starts whisper-server (with Silero VAD), serves app, provides `/save`, `/transcribe` proxy, `/sessions` API with parsed timeline data, `/live-push` + `/live-session` for real-time MCP bridge
-- **`mcp_server.py`** — Stdio MCP server exposing `feedbacks_status` and `feedbacks_poll` tools for streaming live capture data into Claude Code sessions
+- **`mcp_server.py`** — Stdio MCP server: `feedbacks_sessions` / `feedbacks_session` for browsing saved sessions, `feedbacks_status` / `feedbacks_poll` for live capture streaming into Claude Code
 - **`start.sh`** — Thin wrapper that calls `server.py`
 - **`whisper.cpp/`** — Git submodule, built locally for speech-to-text
 - **`skills/feedbacks/`** — Claude Code skill (copied to `~/.claude/skills/feedbacks/` for global access)
@@ -24,15 +24,22 @@ Single-page browser app (`index.html`) + Python server (`server.py`) + whisper.c
 7. Output saved to `sessions/` as extracted files (session.md, player.html, images/) with speech-span grouping
 8. **Live MCP bridge** — during capture, events are also pushed to `/live-push` in real-time. The `mcp_server.py` exposes `feedbacks_status()` and `feedbacks_poll()` tools so Claude Code can receive the timeline live (screenshots as file paths in `/tmp/feedbacks-live/`, transcripts inline, grouped by speech spans)
 
-### Live MCP Bridge
+### MCP Server
 
-The MCP server (`mcp_server.py`) is registered in `~/.claude/settings.json`. It talks to `server.py` via HTTP.
+Registered via `claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py`. Requires `pip install mcp`.
 
+**Saved session tools** (read from disk, no server needed):
+- **`feedbacks_sessions()`** — list all sessions with dates, durations, ticket IDs, AI summaries
+- **`feedbacks_session(name)`** — full timeline for one session: metadata + screenshots as absolute file paths + transcripts
+
+**Live capture tools** (require `server.py` running):
 - **`feedbacks_status()`** — check if capture is active
 - **`feedbacks_poll(since=0)`** — get timeline-grouped events (speech spans with screenshots + transcripts). Pass `latestSeqNum` from previous poll for incremental updates. Speech span events are always included regardless of `since` to maintain grouping.
 - Use `/feedbacks watch` skill command to start watching a live capture
 - Screenshots written to `/tmp/feedbacks-live/{sessionId}/images/` — Claude reads them with the Read tool
 - Session ID matches the final saved directory name (`sessions/{sessionId}/`)
+
+**Server instructions** are provided via the MCP `instructions` field in `FastMCP()` — auto-injected into Claude Code's context at session start.
 
 ### UI Structure
 
