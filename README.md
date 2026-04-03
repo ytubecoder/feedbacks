@@ -23,42 +23,29 @@ The output is a directory of images + markdown, designed to be consumed by an LL
 
 ## Quick Start
 
-### One command (with Claude Code)
-
-```
-/feedbacks
-```
-
-First run installs whisper.cpp and downloads a model. Subsequent runs start the capture server. After a session, run `/feedbacks` again to analyze.
-
-### Install the Claude Code skill
-
 ```bash
+git clone https://github.com/ytubecoder/feedbacks.git
+cd feedbacks
+pip install mcp
 cp -r skills/feedbacks ~/.claude/skills/feedbacks
-```
-
-This installs the `/feedbacks` command globally for Claude Code. After install, `/feedbacks` works from any project directory.
-
-### Install the MCP server
-
-```bash
 claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py
 ```
 
-This registers the feedbacks MCP server with Claude Code. After restarting Claude Code, you get four tools:
+Restart Claude Code. You now have:
 
-| Tool | Purpose |
-|------|---------|
+- **`/feedbacks`** — skill command to setup whisper, start capture, watch live, or analyze sessions
+- **MCP tools** — Claude can browse saved sessions and stream live captures directly
+
+| MCP Tool | Purpose |
+|----------|---------|
 | `feedbacks_sessions()` | List all saved sessions with dates, durations, and AI summaries |
 | `feedbacks_session(name)` | Get a session's full timeline — screenshots + transcripts |
 | `feedbacks_status()` | Check if a live capture is in progress |
 | `feedbacks_poll(since)` | Stream live capture events grouped by speech spans |
 
-The saved session tools (`feedbacks_sessions`, `feedbacks_session`) read directly from disk — no server needed. The live tools (`feedbacks_status`, `feedbacks_poll`) require `server.py` to be running.
+Then run `/feedbacks` — first run builds whisper.cpp and downloads a model. After that, it starts the capture server at **http://localhost:8080**.
 
-**Requires:** `pip install mcp` (the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk))
-
-### Manual install
+### Manual install (without Claude Code)
 
 **Prerequisites:** Python 3, ffmpeg, CMake, C/C++ compiler, Chrome
 
