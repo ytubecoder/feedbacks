@@ -149,11 +149,11 @@ Feedbacks can optionally link a session to a ticket ID. This is useful when revi
 
 ### Setting a ticket ID
 
-**Via URL parameter** (used by `/review` skill):
+**Via URL parameter:**
 ```
 http://localhost:8080/?ticket=B-05
 ```
-The field pre-fills as read-only and shows a "From /review" badge.
+The field pre-fills as read-only.
 
 **Via the UI:** Type a ticket ID into the "Ticket ID" field. It persists in localStorage across sessions and shows a "Linked" badge.
 
@@ -167,21 +167,6 @@ When a ticket ID is set:
 - Player metadata shows the ticket ID
 
 When no ticket ID is set, everything works identically to before.
-
-### Integration with `/review`
-
-The [ticket-takeaway](/review) skill can use feedbacks sessions as structured input when reviewing visual features. The flow:
-
-1. `/review` detects a visual ticket and suggests recording a session
-2. You open `http://localhost:8080/?ticket=B-05` and record
-3. Download the ZIP and unpack it:
-   ```bash
-   unzip ~/Downloads/feedbacks-B-05-*.zip -d docs/features/B-05/feedbacks/$(date +%Y%m%d-%H%M%S)/
-   ```
-4. Next time `/review B-05` runs, it finds the session automatically
-5. Each marker+transcript pair becomes a bug candidate you can accept, edit, or skip
-
-This integration is fully optional — both tools work standalone without the other.
 
 ## Architecture
 
