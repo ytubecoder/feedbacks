@@ -1,3 +1,16 @@
+```
+  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀
+  ░█▀▀░█▀▀░█▀▀░█▀▄░█▀▄░█▀█░█▀▀░█░█░█▀▀ ═══▶═══▶═══▶
+  ░█▀▀░█▀▀░█▀▀░█░█░█▀▄░█▀█░█░░░█▀▄░▀▀█  ═══▶═══▶═══▶
+  ░▀░░░▀▀▀░▀▀▀░▀▀░░▀▀░░▀░▀░▀▀▀░▀░▀░▀▀▀ ═══▶═══▶═══▶
+  ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄
+
+           screen · voice · capture for LLMs
+
+      "Show me what you built."
+                  "Do it just like this."
+```
+
 # Feedbacks
 
 Point-and-talk feedback capture for AI analysis. Share your screen, narrate what you see, and get structured output for LLM ingestion.
