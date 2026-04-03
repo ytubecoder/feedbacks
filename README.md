@@ -36,7 +36,7 @@ Restart Claude Code. You now have:
 
 | MCP Tool | Purpose |
 |----------|---------|
-| `feedbacks_sessions()` | List all saved sessions with dates, durations, and AI summaries |
+| `feedbacks_sessions()` | List all saved sessions with dates, durations, AI summaries and ticket ID (if provided) |
 | `feedbacks_session(name)` | Get a session's full timeline — screenshots + transcripts |
 | `feedbacks_status()` | Check if a live capture is in progress |
 | `feedbacks_poll(since)` | Stream live capture events grouped by speech spans |
