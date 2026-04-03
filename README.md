@@ -240,4 +240,4 @@ sh whisper.cpp/models/download-ggml-model.sh <model-name>
 
 ## License
 
-MIT
+Copyright (c) 2026 ytubecoder. All rights reserved. Free for personal and non-commercial use. Commercial use requires a separate license — see [LICENSE](LICENSE) for details.
