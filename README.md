@@ -7,11 +7,9 @@
 
            screen · voice · capture for LLMs
 
-      "Show me what you built."
-                  "Do it just like this."
+             "Show me what you built."
+                "Do it just like this."
 ```
-
-# Feedbacks
 
 Point-and-talk feedback capture for AI analysis. Share your screen, narrate what you see, and get structured output for LLM ingestion.
 
@@ -19,7 +17,7 @@ Point-and-talk feedback capture for AI analysis. Share your screen, narrate what
 
 Feedbacks captures your screen and voice simultaneously while you browse a web app. You talk naturally — "this button looks off", "when I scroll here the layout breaks" — and the tool records timestamped screenshots with your cursor position alongside a transcript of what you said.
 
-The output is a directory of images + markdown, designed to be consumed by an LLM agent that can see what you were pointing at and read what you were saying.
+The output is a directory of images + markdown made available over MCP so you get batched transcripts as you go or access to past sessions, all designed to be consumed by an LLM agent that can see what you were pointing at and read what you were saying.
 
 ## Quick Start
 
