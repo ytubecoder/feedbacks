@@ -45,12 +45,13 @@ Restart Claude Code. You now have:
 
 Then run `/feedbacks` — first run builds whisper.cpp and downloads a model. After that, it starts the capture server at **http://localhost:8080**.
 
-### Manual install (without Claude Code)
+<details>
+<summary><b>Manual install (without Claude Code) & Options</b></summary>
 
 **Prerequisites:** Python 3, ffmpeg, CMake, C/C++ compiler, Chrome
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/ytubecoder/feedbacks.git
 cd feedbacks
 
 # server.py handles everything — builds whisper.cpp, downloads model, starts servers
@@ -59,7 +60,7 @@ python3 server.py
 
 Open **http://localhost:8080** in Chrome. Press Ctrl+C to stop.
 
-That's it. `server.py` will:
+`server.py` will:
 - Clone and build whisper.cpp if not present
 - Download `small.en` model if no model found
 - Start whisper-server on :8081
@@ -67,13 +68,15 @@ That's it. `server.py` will:
 
 If whisper setup fails, the app still works — enter an OpenAI API key in the UI for cloud transcription.
 
-### Options
+**Options:**
 
 ```bash
 python3 server.py --port 8080 --whisper-port 8081  # custom ports
 python3 server.py --no-whisper                       # skip whisper, cloud-only
 FEEDBACKS_OUTPUT_DIR=./my-sessions python3 server.py # custom output directory
 ```
+
+</details>
 
 ## Usage
 
