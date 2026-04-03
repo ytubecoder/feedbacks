@@ -28,8 +28,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PORT = 8080
 WHISPER_PORT = 8081
 OUTPUT_DIR = os.environ.get("FEEDBACKS_OUTPUT_DIR", str(SCRIPT_DIR / "sessions"))
+LIVE_DIR = Path("/tmp/feedbacks-live")
 
 whisper_process = None
+
+# ── Live session state (in-memory) ──
+# Key: sessionId, Value: {active, startTime, events: [...], latestSeqNum}
+live_sessions = {}
+live_sessions_lock = threading.Lock()
 
 
 def parse_session_md(md_path):
@@ -315,6 +321,9 @@ class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
         if parsed.path == "/sessions":
             self._handle_get_sessions()
             return
+        if parsed.path == "/live-session":
+            self._handle_live_session(parsed)
+            return
         m = re.match(r'^/sessions/(feedbacks-[\w-]+)/images/([\w.-]+)$', parsed.path)
         if m:
             self._serve_session_image(m.group(1), m.group(2))
@@ -327,6 +336,12 @@ class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
             return
         if self.path == "/transcribe":
             self._handle_transcribe()
+            return
+        if self.path == "/live-push":
+            self._handle_live_push()
+            return
+        if self.path == "/live-end":
+            self._handle_live_end()
             return
         self.send_error(404)
 
@@ -445,6 +460,120 @@ class FeedbacksHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
+
+    def _handle_live_push(self):
+        """Receive incremental live capture events from the browser."""
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            data = json.loads(body)
+
+            session_id = data.get("sessionId", "")
+            event_type = data.get("type")  # "screenshot" or "transcript"
+            seq_num = data.get("seqNum", 0)
+            offset_time = data.get("offsetTime", 0)
+            event_data = data.get("data", {})
+
+            with live_sessions_lock:
+                if session_id not in live_sessions:
+                    live_sessions[session_id] = {
+                        "active": True,
+                        "startTime": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                        "events": [],
+                        "latestSeqNum": 0,
+                    }
+
+                session = live_sessions[session_id]
+                event = {
+                    "seqNum": seq_num,
+                    "type": event_type,
+                    "offsetTime": offset_time,
+                }
+
+                if event_type == "screenshot":
+                    # Write image to temp dir, store path
+                    img_dir = LIVE_DIR / session_id / "images"
+                    img_dir.mkdir(parents=True, exist_ok=True)
+                    filename = f"{seq_num:04d}.png"
+                    img_path = img_dir / filename
+                    img_bytes = base64.b64decode(event_data.get("base64", ""))
+                    img_path.write_bytes(img_bytes)
+                    event["imagePath"] = str(img_path.resolve())
+                elif event_type == "transcript":
+                    event["text"] = event_data.get("text", "")
+                    event["startTime"] = event_data.get("startTime", offset_time)
+                    event["endTime"] = event_data.get("endTime", offset_time)
+                elif event_type == "speech_start":
+                    event["startTime"] = event_data.get("startTime", offset_time)
+                elif event_type == "speech_end":
+                    event["startTime"] = event_data.get("startTime", offset_time)
+                    event["endTime"] = event_data.get("endTime", offset_time)
+
+                session["events"].append(event)
+                session["latestSeqNum"] = max(session["latestSeqNum"], seq_num)
+
+            self._send_json({"ok": True, "seqNum": seq_num})
+        except Exception as e:
+            print(f"Live push error: {e}")
+            self._send_json({"ok": False, "error": str(e)}, status=500)
+
+    def _handle_live_session(self, parsed):
+        """Return live session events, optionally filtered by ?since=N&session=ID."""
+        from urllib.parse import parse_qs
+        params = parse_qs(parsed.query)
+        since = int(params.get("since", [0])[0])
+        session_filter = params.get("session", [None])[0]
+
+        with live_sessions_lock:
+            if session_filter:
+                session = live_sessions.get(session_filter)
+                if not session:
+                    self._send_json({"active": False, "sessionId": None, "events": [], "latestSeqNum": 0})
+                    return
+                self._send_live_response(session_filter, session, since)
+            else:
+                # Return the most recent active session, or most recent overall
+                active = [(k, v) for k, v in live_sessions.items() if v["active"]]
+                if active:
+                    sid, session = active[-1]
+                elif live_sessions:
+                    sid, session = list(live_sessions.items())[-1]
+                else:
+                    self._send_json({"active": False, "sessionId": None, "events": [], "latestSeqNum": 0})
+                    return
+                self._send_live_response(sid, session, since)
+
+    def _send_live_response(self, sid, session, since):
+        """Build live session response. Always includes speech span events for timeline grouping."""
+        # Speech span events are structural — always include them so incremental
+        # polls can still group screenshots/transcripts into speech intervals
+        filtered = [
+            e for e in session["events"]
+            if e["seqNum"] > since or e["type"] in ("speech_start", "speech_end")
+        ]
+        self._send_json({
+            "sessionId": sid,
+            "active": session["active"],
+            "startTime": session["startTime"],
+            "latestSeqNum": session["latestSeqNum"],
+            "events": filtered,
+        })
+
+    def _handle_live_end(self):
+        """Mark a live session as ended."""
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            data = json.loads(body)
+            session_id = data.get("sessionId", "")
+
+            with live_sessions_lock:
+                if session_id in live_sessions:
+                    live_sessions[session_id]["active"] = False
+
+            self._send_json({"ok": True})
+        except Exception as e:
+            self._send_json({"ok": False, "error": str(e)}, status=500)
 
     def _handle_transcribe(self):
         """Proxy transcription: convert WebM→WAV via ffmpeg, forward to whisper."""

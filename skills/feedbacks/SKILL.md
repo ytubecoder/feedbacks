@@ -1,19 +1,20 @@
 ---
 name: feedbacks
-description: All-in-one skill — setup whisper.cpp, launch the capture app, or analyze a captured session. Works from any project.
+description: All-in-one skill — setup whisper.cpp, launch the capture app, analyze a session, or watch a live capture via MCP. Works from any project.
 user_invocable: true
 arguments:
   - name: command
-    description: "Optional: 'setup', 'start', 'analyze', or a path to a session. Omit to auto-detect what to do."
+    description: "Optional: 'setup', 'start', 'watch', 'analyze', or a path to a session. Omit to auto-detect what to do."
     required: false
 ---
 
 # Feedbacks — Unified Skill
 
-This skill handles everything: first-time setup, launching the capture app, and analyzing sessions.
-It works from **any project directory** — the feedbacks tool lives at `/home/user/projects/feedbacks`.
+This skill handles everything: first-time setup, launching the capture app, watching live captures, and analyzing sessions.
+It works from **any project directory**.
 
-**FEEDBACKS_HOME:** `/home/user/projects/feedbacks`
+**FEEDBACKS_HOME:** To find this, run: `dirname $(claude mcp list 2>/dev/null | grep feedbacks | grep -oP '(?<=python3 ).*mcp_server.py') 2>/dev/null || find ~/projects -maxdepth 2 -name mcp_server.py -path '*/feedbacks/*' -printf '%h' 2>/dev/null`
+Cache the result for the session. If not found, tell the user to install: `git clone https://github.com/ytubecoder/feedbacks && cd feedbacks && claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py`
 
 ## Determine what to do
 
@@ -21,18 +22,21 @@ Check `$ARGUMENTS.command`:
 
 - If `setup` → go to **Setup**
 - If `start` → go to **Start**
+- If `watch` → go to **Watch (Live MCP Bridge)**
 - If `analyze` or a file/directory path → go to **Analyze**
 - If omitted → **Auto-detect**:
 
 ### Auto-detect logic
 
-1. Check if FEEDBACKS_HOME exists: `ls /home/user/projects/feedbacks/start.sh`
+1. Resolve FEEDBACKS_HOME (see above). Check it exists: `ls $FEEDBACKS_HOME/start.sh`
    - If not → tell the user the feedbacks project isn't installed and provide clone instructions
 2. Check if `whisper.cpp/build/bin/whisper-server` exists in FEEDBACKS_HOME
    - If not → tell the user: "First time? Running setup." → go to **Setup**
 3. Check if whisper-server is already running: `curl -sf http://localhost:8081/health`
    - If not running → go to **Start**
-   - If running → go to **Analyze** (app is already up, user probably has a session to review)
+   - If running → check for active live capture via `feedbacks_status()` MCP tool
+     - If active capture → go to **Watch (Live MCP Bridge)**
+     - If no active capture → go to **Analyze** (app is already up, user probably has a session to review)
 
 ---
 
@@ -41,7 +45,7 @@ Check `$ARGUMENTS.command`:
 Install whisper.cpp and download a model. Run these commands:
 
 ```bash
-cd /home/user/projects/feedbacks
+cd $FEEDBACKS_HOME
 
 # Clone and build whisper.cpp
 git clone https://github.com/ggerganov/whisper.cpp
@@ -83,7 +87,7 @@ Launch the capture app and whisper server.
      `./sessions/` (the feedbacks project default)
 3. If not running, start them:
    ```bash
-   FEEDBACKS_OUTPUT_DIR=/path/to/output cd /home/user/projects/feedbacks && ./start.sh whisper.cpp/models/ggml-base.en.bin
+   FEEDBACKS_OUTPUT_DIR=/path/to/output cd $FEEDBACKS_HOME && ./start.sh whisper.cpp/models/ggml-base.en.bin
    ```
    Run this in the background so the user can continue using Claude Code.
 4. Tell the user:
@@ -106,6 +110,51 @@ After downloading the ZIP, if a ticket ID was set, suggest the unpack command:
 unzip ~/Downloads/feedbacks-{ticket-ID}-*.zip -d docs/features/{ticket-ID}/feedbacks/$(date +%Y%m%d-%H%M%S)/
 ```
 Then note: "Next time you run `/review {ticket-ID}`, it will automatically detect and use this session."
+
+---
+
+## Watch (Live MCP Bridge)
+
+Stream live capture data into the current Claude Code session via MCP tools.
+This enables real-time awareness of what the user is seeing and saying during a capture.
+
+### Prerequisites
+- Feedbacks server must be running (`python3 server.py` in FEEDBACKS_HOME)
+- The `feedbacks` MCP server must be registered in `~/.claude/settings.json`
+- A capture must be active in the browser (user clicked "New Capture" at http://localhost:8080)
+
+### How to watch
+
+1. Call `feedbacks_status()` MCP tool to check for an active capture
+   - If no active capture, tell the user to start one in the browser
+2. Call `feedbacks_poll(since=0)` to get all events so far
+3. Review the transcript text inline. For screenshots, read key ones with the Read tool (they are PNG files on disk at the paths returned by the poll)
+4. Note the `latestSeqNum` from the response
+5. Continue your current task (e.g., /review, coding, etc.)
+6. Periodically call `feedbacks_poll(since=<lastSeqNum>)` to get new events
+   - A good cadence: poll after each substantive response, or when the user says "check capture"
+7. When the poll returns `active: false`, the capture has ended — summarize what you observed
+
+### Integration with other tasks
+
+The watch mode is designed to augment other workflows:
+- **During /review**: The user narrates what they're reviewing while you see screenshots + transcript
+- **During debugging**: The user shows you the bug visually while describing it
+- **During design feedback**: The user walks through a UI while commenting on issues
+
+You don't need to analyze every screenshot — focus on transcripts for context, and only read screenshots when the user says something like "look at this", "see here", or references something visual.
+
+### Example flow
+
+```
+User: /feedbacks watch
+Claude: [calls feedbacks_status()] Active capture found: feedbacks-2026-04-03-...
+Claude: [calls feedbacks_poll(since=0)] Got 5 events - 2 transcripts, 3 screenshots
+Claude: "I can see your capture. You've mentioned the login form has a layout issue. Let me read that screenshot..."
+Claude: [reads screenshot file] "I can see the form fields are overlapping on mobile width..."
+... user continues talking ...
+Claude: [calls feedbacks_poll(since=5)] 3 new events
+```
 
 ---
 

@@ -21,10 +21,29 @@ First run installs whisper.cpp and downloads a model. Subsequent runs start the 
 ### Install the Claude Code skill
 
 ```bash
-cp -r ~/projects/feedbacks/skills/feedbacks ~/.claude/skills/feedbacks
+cp -r skills/feedbacks ~/.claude/skills/feedbacks
 ```
 
 This installs the `/feedbacks` command globally for Claude Code. After install, `/feedbacks` works from any project directory.
+
+### Install the MCP server
+
+```bash
+claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py
+```
+
+This registers the feedbacks MCP server with Claude Code. After restarting Claude Code, you get four tools:
+
+| Tool | Purpose |
+|------|---------|
+| `feedbacks_sessions()` | List all saved sessions with dates, durations, and AI summaries |
+| `feedbacks_session(name)` | Get a session's full timeline — screenshots + transcripts |
+| `feedbacks_status()` | Check if a live capture is in progress |
+| `feedbacks_poll(since)` | Stream live capture events grouped by speech spans |
+
+The saved session tools (`feedbacks_sessions`, `feedbacks_session`) read directly from disk — no server needed. The live tools (`feedbacks_status`, `feedbacks_poll`) require `server.py` to be running.
+
+**Requires:** `pip install mcp` (the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk))
 
 ### Manual install
 
@@ -172,17 +191,22 @@ Browser (index.html)                    server.py (:8080)
 │ Auto-capture (1s)    │ POST /transcr │ WebM→WAV (ffmpeg) │
 │ Dedup + timeline UI  │──────────────>│ → whisper (:8081) │
 │ JSZip                │  transcript   │                   │
+│                      │ POST /live-   │ Live state        │
+│                      │──push────────>│ (in memory)       │
 └─────────────────────┘<──────────────│ whisper-server    │
         │                              │ (auto-started)    │
-        │ auto-save + optional ZIP     └──────────────────┘
-        ▼
-   sessions/feedbacks-{ts}/
-   ├── session.md + images/
-   ├── player.html + debug.log
-        │
-        │ /feedbacks skill
-        ▼
-   LLM agent analysis
+        │ auto-save + optional ZIP     └────────┬─────────┘
+        ▼                                       │ GET /live-session
+   sessions/feedbacks-{ts}/               ┌─────┴──────────┐
+   ├── session.md + images/               │ mcp_server.py   │
+   ├── player.html + debug.log            │ (stdio MCP)     │
+        │                                 │                 │
+        │ /feedbacks skill                │ feedbacks_poll  │
+        ├────────────────────────────────>│ feedbacks_*     │
+        ▼                                 └─────┬──────────┘
+   LLM agent analysis                          │
+        ▲                                       │ MCP tools
+        └───────────────────────────────────────┘
 ```
 
 **Key technical details:**

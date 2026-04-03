@@ -918,6 +918,26 @@ function createSession() {
   };
 }
 let currentSession = null;  // The active/most-recent session
+let liveSeqNum = 0;         // Monotonic counter for live-push events
+let liveSessionId = null;   // Set at capture start for live-push
+
+// Fire-and-forget: push incremental events to server for MCP bridge
+function pushLiveUpdate(type, data) {
+  if (!liveSessionId) return;
+  liveSeqNum++;
+  const elapsed = currentSession ? (Date.now() - currentSession.startTime) / 1000 : 0;
+  fetch('/live-push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: liveSessionId,
+      type,
+      seqNum: liveSeqNum,
+      offsetTime: elapsed,
+      data,
+    }),
+  }).catch(() => {}); // fire-and-forget
+}
 
 // ── Page-level globals (NOT per-session) ──
 let screenStream = null;
@@ -1463,6 +1483,7 @@ function onSpeechStart(startTime) {
   }
 
   currentSession.speechSpans.push({ start: startTime, end: null, chunkNum: currentSession.chunkCount + 1 });
+  pushLiveUpdate('speech_start', { startTime });
   updateSpeechIndicator(true);
   log(`Speech started at ${formatTime(startTime)}`, 'info');
 }
@@ -1474,6 +1495,7 @@ function onSpeechEnd(endTime) {
   const spans = currentSession.speechSpans;
   if (spans.length > 0 && spans[spans.length - 1].end === null) {
     spans[spans.length - 1].end = endTime;
+    pushLiveUpdate('speech_end', { startTime: spans[spans.length - 1].start, endTime });
   }
 
   // Finalize the audio chunk — send to whisper
@@ -1844,6 +1866,9 @@ async function captureScreenshot(session, clickPoint, boundingBox) {
   if (boundingBox) shot.boundingBox = { ...boundingBox, marker };
   session.screenshots.push(shot);
 
+  // Push to live MCP bridge (base64 without data URL prefix)
+  pushLiveUpdate('screenshot', { base64: dataUrl.split(',')[1] });
+
   // Update timeline and status
   insertTimelineEntry('img', elapsed, null, dataUrl, session.timelineEl);
   updateStatusStrip();
@@ -2043,6 +2068,16 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
     session.transcribedCount++;
     const transcriptText = segments.map(s => s.text).join(' ').trim();
     const chunkEndTime = segments.length > 0 ? segments[segments.length - 1].end + offsetTime : null;
+
+    // Push transcript to live MCP bridge
+    if (transcriptText && transcriptText !== '(no speech detected)') {
+      pushLiveUpdate('transcript', {
+        text: transcriptText,
+        startTime: offsetTime,
+        endTime: chunkEndTime || offsetTime,
+      });
+    }
+
     replaceSTTPlaceholder(chunkNum, transcriptText || '(no speech detected)', offsetTime, session.timelineEl, chunkEndTime);
     updateStatusStrip();
     log(`Chunk ${chunkNum} transcribed (${segments.length} segments)`, 'success');
@@ -2086,6 +2121,12 @@ async function startSession() {
     currentSession.startTime = Date.now();
     currentSession.ticketId = $('captureTicketId') ? $('captureTicketId').value.trim() : '';
     currentSession.isRecording = true;
+
+    // Initialize live session for MCP bridge
+    const ts = new Date(currentSession.startTime).toISOString().slice(0, 19).replace(/[T:]/g, '-');
+    const tid = currentSession.ticketId;
+    liveSessionId = tid ? `feedbacks-${tid}-${ts}` : `feedbacks-${ts}`;
+    liveSeqNum = 0;
 
     // Mirror startTime to page-level global for legacy code that still reads it
     sessionStartTime = currentSession.startTime;
@@ -2194,6 +2235,16 @@ async function startSession() {
 async function stopSession() {
   if (!currentSession || !currentSession.isRecording) return;
   currentSession.isRecording = false;  // SET BEFORE any await — blocks re-entrant calls
+
+  // Signal live session end to MCP bridge
+  if (liveSessionId) {
+    fetch('/live-end', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: liveSessionId }),
+    }).catch(() => {});
+    liveSessionId = null;
+  }
 
   // Capture reference so closures below stay bound to this session
   const session = currentSession;

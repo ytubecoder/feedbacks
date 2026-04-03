@@ -1,2 +1,5 @@
 sessions/
 .feedbacks/
+__pycache__/
+.superpowers/
+docs/superpowers/
