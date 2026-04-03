@@ -1,5 +1,18 @@
 # Session Log
 
+## 2026-04-03 — Gitignore cleanup for repo hygiene
+
+### Summary
+- Added `whisper.cpp/` (694MB) and `*.pyc` to `.gitignore` to prevent accidental commits
+- Verified no tracked files need cleaning — whisper.cpp was never committed
+
+### Lessons Learned
+- **Accepted:** Proactive gitignore audit before repo grows — whisper.cpp was untracked but one `git add .` would have bloated the repo with 694MB of build artifacts
+- **Gotcha:** Browser caching (again) — user saw old capture button UI after server restart. Hard refresh (Ctrl+Shift+R) needed. This is a recurring theme (see 2026-03-31 session).
+
+### Decisions
+- No git history cleanup needed — whisper.cpp was never tracked, only untracked
+
 ## 2026-04-03 — MCP server for live capture streaming and session history
 
 ### Summary
