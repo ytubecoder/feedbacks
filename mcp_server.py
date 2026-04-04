@@ -33,12 +33,15 @@ mcp = FastMCP(
         "transcripts during user sessions.\n\n"
         "SAVED SESSIONS: Use feedbacks_sessions() to list all past sessions with dates, "
         "durations, and AI summaries. Use feedbacks_session(name) to get a specific session's "
-        "full timeline — screenshots as file paths (read with Read tool), transcripts inline, "
-        "grouped by speech spans. This is the same data shown in the web UI.\n\n"
+        "full timeline — screenshots as file paths (read with the Read tool to view images), "
+        "transcripts inline, grouped by speech spans. This is the same data shown in the web UI.\n\n"
         "LIVE CAPTURE: Use feedbacks_status() to check for an active recording, then "
         "feedbacks_poll(since=0) for the live timeline. Pass latestSeqNum as since for "
         "incremental updates. Use during /review or any task where the user is narrating "
-        "what they see on screen."
+        "what they see on screen. Screenshot paths returned by poll are PNG files on disk — "
+        "read them with the Read tool to see what the user is looking at.\n\n"
+        "ANALYSIS: Use the /feedbacks skill for full session analysis (structured breakdown "
+        "of each screenshot + transcript), setup, or live watching workflows."
     ),
 )
 
@@ -453,8 +456,8 @@ def feedbacks_poll(since: int = 0, session_id: str | None = None) -> str:
 
     Returns a markdown-formatted timeline matching the session.md structure:
     screenshots and transcripts grouped into speech intervals, with context
-    frames shown for silence. Screenshot paths are absolute file paths that
-    can be read with the Read tool.
+    frames shown for silence. Screenshot paths are absolute PNG file paths —
+    use the Read tool to view them as images.
 
     Args:
         since: Only return events with seqNum > this value. Pass 0 for the full

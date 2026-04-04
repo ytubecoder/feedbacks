@@ -13,7 +13,7 @@ arguments:
 This skill handles everything: first-time setup, launching the capture app, watching live captures, and analyzing sessions.
 It works from **any project directory**.
 
-**FEEDBACKS_HOME:** To find this, run: `dirname $(claude mcp list 2>/dev/null | grep feedbacks | grep -oP '(?<=python3 ).*mcp_server.py') 2>/dev/null || find ~/projects -maxdepth 2 -name mcp_server.py -path '*/feedbacks/*' -printf '%h' 2>/dev/null`
+**FEEDBACKS_HOME:** Read `~/.claude/settings.json` and extract the path from `mcpServers.feedbacks.args` (the arg containing `mcp_server.py`), then take its parent directory.
 Cache the result for the session. If not found, tell the user to install: `git clone https://github.com/ytubecoder/feedbacks && cd feedbacks && claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py`
 
 ## Determine what to do
