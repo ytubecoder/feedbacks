@@ -72,6 +72,7 @@ cd ~/projects/feedbacks && python3 server.py
 - **Cross-tab interaction** — User interacts with the shared tab, not the feedbacks page. Keyboard hotkeys can't reach feedbacks from the observed app. VAD (audio-level speech detection) is the only zero-friction input method.
 - **VAD threshold tuning** — `SPEECH_THRESHOLD = 25` may need adjustment for different microphones/environments. Too low = background noise triggers. Too high = quiet speech missed.
 - **Whisper accuracy** — Even with small.en + VAD, whisper can mishear words. The transcript is always the raw whisper output, never modified. AI summary is generated separately by Claude.
+- **WSL access** — `getDisplayMedia`/`getUserMedia` require secure context. Access via WSL IP fails silently. Use Chrome `--unsafely-treat-insecure-origin-as-secure` flag or forward to localhost.
 
 ## Output Directory
 

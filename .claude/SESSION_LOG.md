@@ -1,5 +1,24 @@
 # Session Log
 
+## 2026-04-04 — Fix stop-share UI freeze and transcription placeholder visibility
+
+### Summary
+- Fixed `stopSession()` appearing stuck after clicking "Stop Share" — mic meter and recording indicator now clear immediately instead of waiting for all async transcription/save work to complete
+- Diagnosed 0-byte audio blob issue — reusing a stale preview mic stream caused MediaRecorder to produce empty output despite VAD detecting speech
+- Made STT "transcribing..." placeholder visible (was 0.3 opacity, now 0.7 with pulse animation)
+
+### Lessons Learned
+- **Accepted:** Moving UI cleanup (header indicator, mic meter, button state) to immediately after clearing intervals in `stopSession()` — the async tail (transcribe → save → summarize) can take 10+ seconds, UI must reflect "stopped" state before that
+- **Gotcha:** `stopMicMeter()` was only called in `cleanup()` (error path), never in the normal `stopSession()` flow — mic level bars kept animating after recording stopped
+- **Gotcha:** Preview mic stream reuse — `window._previewMicStream` can become stale if `getDisplayMedia` interferes. MediaRecorder reports `active: true` and `tracks: 1` but produces 0-byte blobs. The AnalyserNode (used for VAD) still works on the same stream, so speech IS detected but no audio data is recorded.
+- **Gotcha:** STT placeholder at `opacity: 0.3` was effectively invisible — users didn't know transcription was happening
+- **Gotcha:** WSL networking — `getDisplayMedia`/`getUserMedia` require secure context (HTTPS or localhost). Accessing via raw WSL IP silently blocks screen/mic APIs with no error. Chrome `--unsafely-treat-insecure-origin-as-secure` flag or port forwarding to localhost required.
+- **Rejected:** `netsh interface portproxy` for WSL→Windows port forwarding — unreliable, requires firewall rules, added complexity. Chrome flag approach is simpler.
+
+### Decisions
+- Button shows "Processing..." during transcription/save phase, then "New Capture" when done — gives clear lifecycle feedback
+- Added diagnostic logging to `ondataavailable` (blob size, parts count) — essential for debugging silent audio failures
+
 ## 2026-04-03 — Gitignore cleanup for repo hygiene
 
 ### Summary
