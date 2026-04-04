@@ -744,8 +744,8 @@
     word-break: break-word;
   }
 
-  .tl-entry.pending { opacity: 0.3; }
-  .tl-entry.pending .tl-text { font-style: italic; color: var(--text-dim); }
+  .tl-entry.pending { opacity: 0.7; animation: pulse 2s ease-in-out infinite; }
+  .tl-entry.pending .tl-text { font-style: italic; color: var(--text-muted); }
   .tl-entry.filtered .tl-text { font-style: italic; color: #f59e0b; opacity: 0.6; font-size: 0.75rem; }
 
   /* Diagnostics — nearly invisible until hovered */
@@ -1924,6 +1924,7 @@ function startChunkRecording(stream) {
 
   chunkRecorder = new MediaRecorder(stream, { mimeType });
   chunkRecorder.ondataavailable = e => {
+    log(`ondataavailable: size=${e.data.size}, parts=${chunkAudioParts.length}`, 'info');
     if (e.data.size > 0) chunkAudioParts.push(e.data);
   };
   chunkRecorder.onerror = (e) => {
@@ -1931,6 +1932,7 @@ function startChunkRecording(stream) {
   };
   // No timeslice — stop() triggers single ondataavailable with complete file
   chunkRecorder.start();
+  log(`MediaRecorder started, state: ${chunkRecorder.state}`, 'info');
 }
 
 function rotateChunk() {
@@ -2275,6 +2277,15 @@ async function stopSession() {
   clearInterval(session.screenshotIntervalId);
   clearInterval(session.statusStripIntervalId);
 
+  // Stop mic meter immediately — no longer recording
+  stopMicMeter();
+
+  // Update header UI immediately so it doesn't look stuck during transcription
+  const headerRecIndicator = $('headerRecIndicator');
+  if (headerRecIndicator) headerRecIndicator.classList.remove('active');
+  const newCaptureBtnEarly = $('newCaptureBtn');
+  if (newCaptureBtnEarly) { newCaptureBtnEarly.disabled = true; newCaptureBtnEarly.textContent = 'Processing...'; }
+
   // Finalize the last chunk
   if (chunkRecorder && chunkRecorder.state === 'recording') {
     const partsSnapshot = chunkAudioParts;
@@ -2440,13 +2451,9 @@ async function stopSession() {
     }
   }
 
-  // Re-enable New Capture button
+  // Re-enable New Capture button (was set to "Processing..." earlier)
   const newCaptureBtn = $('newCaptureBtn');
   if (newCaptureBtn) { newCaptureBtn.disabled = false; newCaptureBtn.textContent = 'New Capture'; }
-
-  // Hide header recording indicator
-  const recIndicator = $('headerRecIndicator');
-  if (recIndicator) recIndicator.classList.remove('active');
 
   // Un-dim past rows
   document.querySelectorAll('.session-row').forEach(r => r.classList.remove('dimmed'));

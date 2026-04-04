@@ -733,7 +733,7 @@ def main():
     print("================================")
     print()
 
-    server = http.server.HTTPServer(("127.0.0.1", port), FeedbacksHandler)
+    server = http.server.HTTPServer(("0.0.0.0", port), FeedbacksHandler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
