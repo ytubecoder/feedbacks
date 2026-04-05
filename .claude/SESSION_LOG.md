@@ -1,5 +1,26 @@
 # Session Log
 
+## 2026-04-06 — Recorder widget mode for embeddable capture
+
+### Summary
+- Added `?mode=recorder` compact popup UI — same capture engine, minimal chrome, designed for embedding by other apps
+- Widget shows timer, mic level bars, screenshot/transcript counts, scrollable timeline feed, Start/Finish buttons
+- On save: sends `postMessage` to opener/parent with session details, auto-closes popup window
+- Generic integration API via query params (`mode`, `ticket`, `autostart`, `autoclose`, `origin`, `title`)
+
+### Lessons Learned
+- **Accepted:** CSS class-based button toggle (`#recorderWidget.rw-recording .rw-stop`) over inline `style.display` — setting `el.style.display = ''` doesn't override a CSS rule with `display: none`, it just clears the inline style and the CSS rule wins. Class-based toggle is the correct pattern.
+- **Accepted:** Reusing existing capture functions (`startSession`/`stopSession`) with conditional DOM updates — gating full-app UI updates behind `if (!RECORDER_MODE)` while keeping the capture pipeline shared avoids code duplication.
+- **Accepted:** Supporting both `window.opener` (popup) and `window.parent` (iframe) for postMessage — costs one extra check, covers both embedding patterns.
+- **Gotcha:** Mic bars need explicit height class (`large`) — the base `.mic-bars` class has `display: flex` but no height. Without the `large` class, bars render at 0px height and are invisible.
+- **Gotcha:** `rwUpdateInterval` leak on error — if `stopSession()` throws, the 500ms update interval keeps running. Must clear it in `rwStop()` before calling `stopSession()`, not after.
+
+### Decisions
+- No pause/resume in v1 — MediaRecorder pause would require freezing VAD state, timers, and screenshot intervals. Start+Stop only.
+- Recommended popup size: 500x625px (25% taller than ticket-takeaway's original 350x250 suggestion, since widget shows timeline content)
+- File-based session detection (meta.json watching) remains the primary integration pattern — postMessage is additive, not a replacement
+- No new backend endpoints or server.py changes — widget is purely a frontend mode switch
+
 ## 2026-04-04 — Fix stop-share UI freeze and transcription placeholder visibility
 
 ### Summary

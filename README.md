@@ -166,6 +166,39 @@ When a ticket ID is set:
 
 When no ticket ID is set, everything works identically to before.
 
+## Embedding in Other Apps (Recorder Widget)
+
+Open feedbacks in a compact popup from any app for quick capture sessions:
+
+```js
+const popup = window.open(
+  'http://localhost:8080/?mode=recorder&ticket=BUG-42',
+  'feedbacks-recorder',
+  'width=500,height=625'
+);
+
+// Get notified when session completes
+window.addEventListener('message', (e) => {
+  if (e.data?.type === 'feedbacks:session-saved') {
+    console.log(e.data.sessionName);  // "feedbacks-BUG-42-2026-..."
+    console.log(e.data.ticketId);     // "BUG-42"
+    console.log(e.data.duration);     // "1:23"
+  }
+});
+```
+
+The widget shows recording controls, mic level, screenshot/transcript counters, and a live timeline — same capture engine as the full app. After save, it auto-closes the popup and sends a `postMessage` with session details.
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `mode=recorder` | — | Compact widget UI |
+| `ticket=X` | — | Link session to ticket |
+| `autostart=1` | `0` | Skip the Start button |
+| `autoclose=0` | `1` | Keep window open after save |
+| `origin=URL` | `*` | Restrict postMessage origin |
+
+**File-based detection** also works: watch the output directory for new `meta.json` files (written last in the save sequence). Call `GET /config` to get the output directory path.
+
 ## Architecture
 
 ```

@@ -829,6 +829,155 @@
 
   /* Hidden capture video */
   #captureVideo { display: none; }
+
+  /* ═══ Recorder Widget Mode ═══ */
+  #recorderWidget { display: none; }
+
+  body.recorder-mode #appHeader,
+  body.recorder-mode #sessionList,
+  body.recorder-mode #capturePrompt,
+  body.recorder-mode .diagnostics,
+  body.recorder-mode #emptyState { display: none !important; }
+
+  body.recorder-mode {
+    min-height: auto;
+    height: 100vh;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  body.recorder-mode #recorderWidget {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    padding: 0.75rem;
+    box-sizing: border-box;
+    gap: 0.5rem;
+  }
+
+  .rw-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rw-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .rw-dot.recording {
+    background: var(--destructive);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .rw-dot.done {
+    background: var(--success);
+    animation: none;
+  }
+
+  .rw-time {
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--fg);
+  }
+
+  .rw-ticket {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    background: rgba(167, 139, 250, 0.1);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    display: none; /* shown via JS when ticket present */
+  }
+  .rw-ticket.visible { display: inline; }
+
+  .rw-meter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .rw-meter-row .mic-bars {
+    gap: 2px;
+  }
+
+  .rw-stats {
+    display: flex;
+    gap: 0.75rem;
+    font-size: 0.7rem;
+    color: var(--muted-fg);
+  }
+
+  .rw-timeline {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.25rem;
+  }
+
+  /* Compact timeline entries in widget */
+  .rw-timeline .tl-entry {
+    padding: 0.15rem 0.25rem;
+    gap: 0.25rem;
+  }
+  .rw-timeline .tl-time { font-size: 0.6rem; }
+  .rw-timeline .tl-badge { font-size: 0.55rem; padding: 0 0.2rem; }
+  .rw-timeline .tl-body { font-size: 0.65rem; }
+  .rw-timeline .tl-body img { max-height: 40px; }
+
+  .rw-controls {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .rw-btn {
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.4rem 1.2rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .rw-btn:hover { opacity: 0.85; }
+  .rw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .rw-start {
+    background: var(--accent);
+    color: #fff;
+  }
+  .rw-stop {
+    background: var(--destructive);
+    color: #fff;
+  }
+  /* Toggle start/stop buttons based on widget state */
+  #recorderWidget:not(.rw-recording) .rw-stop { display: none; }
+  #recorderWidget.rw-recording .rw-start { display: none; }
+  #recorderWidget.rw-done .rw-stop,
+  #recorderWidget.rw-done .rw-start { display: none; }
+
+  .rw-status {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--muted-fg);
+    min-height: 1rem;
+  }
+
+  /* Scrollbar for widget timeline */
+  .rw-timeline::-webkit-scrollbar { width: 4px; }
+  .rw-timeline::-webkit-scrollbar-track { background: transparent; }
+  .rw-timeline::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 9999px; }
 </style>
 </head>
 <body>
@@ -867,6 +1016,34 @@
   <button onclick="hideCapturePrompt()">Cancel</button>
 </div>
 
+<!-- ═══ Recorder Widget (compact mode for popup embeds) ═══ -->
+<div id="recorderWidget">
+  <div class="rw-header">
+    <span class="rw-dot" id="rwDot"></span>
+    <span class="rw-time" id="rwTime">0:00</span>
+    <span class="rw-ticket" id="rwTicket"></span>
+  </div>
+  <div class="rw-meter-row">
+    <div class="mic-bars large" id="rwMicBars">
+      <div class="mic-bar" style="height:2px"></div>
+      <div class="mic-bar" style="height:2px"></div>
+      <div class="mic-bar" style="height:2px"></div>
+      <div class="mic-bar" style="height:2px"></div>
+      <div class="mic-bar" style="height:2px"></div>
+    </div>
+    <div class="rw-stats">
+      <span id="rwImgCount">0 img</span>
+      <span id="rwSttCount">0/0 stt</span>
+    </div>
+  </div>
+  <div class="rw-timeline timeline-feed" id="rwTimeline"></div>
+  <div class="rw-controls">
+    <button id="rwStartBtn" class="rw-btn rw-start" onclick="rwStart()">Start Recording</button>
+    <button id="rwStopBtn" class="rw-btn rw-stop" onclick="rwStop()">Finish</button>
+  </div>
+  <div class="rw-status" id="rwStatus"></div>
+</div>
+
 <!-- ═══ Session List ═══ -->
 <div id="sessionList">
   <div id="emptyState">
@@ -891,6 +1068,14 @@
 <video id="captureVideo" autoplay muted playsinline></video>
 
 <script>
+// ── Recorder widget query params (parsed early so mode flag is available everywhere) ──
+const _params = new URLSearchParams(location.search);
+const RECORDER_MODE = _params.get('mode') === 'recorder';
+const RECORDER_AUTOSTART = _params.get('autostart') === '1';
+const RECORDER_AUTOCLOSE = _params.has('autoclose') ? _params.get('autoclose') !== '0' : RECORDER_MODE;
+const RECORDER_ORIGIN = _params.get('origin') || '*';
+const RECORDER_TITLE = _params.get('title') || '';
+
 // ── Session state factory ──
 function createSession() {
   return {
@@ -1414,9 +1599,9 @@ function startMicMeter(stream) {
     micMeterRafId = requestAnimationFrame(animate);
     micAnalyser.getByteFrequencyData(dataArray);
 
-    // Update live recording row mic bars
-    const liveBars = $('micBarsLive');
-    if (liveBars) {
+    // Update mic bars (live row + recorder widget)
+    const barContainers = [].concat($('micBarsLive') || [], $('rwMicBars') || []);
+    for (const liveBars of barContainers) {
       const bars = liveBars.querySelectorAll('.mic-bar');
       const binCount = bars.length;
       for (let i = 0; i < binCount; i++) {
@@ -1554,6 +1739,11 @@ function updateSpeechIndicator(speaking) {
   if (micBars) {
     micBars.classList.toggle('speaking', speaking);
   }
+  // Recorder widget mic bars
+  const rwBars = $('rwMicBars');
+  if (rwBars) {
+    rwBars.classList.toggle('speaking', speaking);
+  }
 }
 
 // ── Timeline ──
@@ -1686,6 +1876,12 @@ function updateStatusStrip() {
   if (liveImg) liveImg.textContent = imgLen + ' img';
   const liveStt = $('liveSttCount');
   if (liveStt) liveStt.textContent = sttDone + '/' + sttTotal + ' stt';
+
+  // Recorder widget counts
+  const rwImg = $('rwImgCount');
+  if (rwImg) rwImg.textContent = imgLen + ' img';
+  const rwStt = $('rwSttCount');
+  if (rwStt) rwStt.textContent = sttDone + '/' + sttTotal + ' stt';
 
   // Diagnostics panel
   const diagSum = $('diagSummary');
@@ -2136,33 +2332,38 @@ async function startSession() {
     // Hide capture prompt
     hideCapturePrompt();
 
-    // Build live row and insert at top of session list
-    const liveRow = createLiveRow();
-    const sessionList = $('sessionList');
-    const firstRow = sessionList.querySelector('.session-row');
-    if (firstRow) {
-      sessionList.insertBefore(liveRow, firstRow);
+    if (RECORDER_MODE) {
+      // In recorder mode, wire timeline to widget container
+      currentSession.timelineEl = $('rwTimeline');
     } else {
-      sessionList.appendChild(liveRow);
+      // Build live row and insert at top of session list
+      const liveRow = createLiveRow();
+      const sessionList = $('sessionList');
+      const firstRow = sessionList.querySelector('.session-row');
+      if (firstRow) {
+        sessionList.insertBefore(liveRow, firstRow);
+      } else {
+        sessionList.appendChild(liveRow);
+      }
+
+      // Hide empty state
+      const emptyState = $('emptyState');
+      if (emptyState) emptyState.style.display = 'none';
+
+      // Dim past session rows
+      document.querySelectorAll('.session-row:not(.live)').forEach(r => r.classList.add('dimmed'));
+
+      // Wire timeline to live row container
+      currentSession.timelineEl = $('liveTimeline');
+
+      // Disable New Capture button
+      const newCaptureBtn = $('newCaptureBtn');
+      if (newCaptureBtn) { newCaptureBtn.disabled = true; newCaptureBtn.textContent = 'Recording...'; }
+
+      // Show header recording indicator
+      const recIndicator = $('headerRecIndicator');
+      if (recIndicator) recIndicator.classList.add('active');
     }
-
-    // Hide empty state
-    const emptyState = $('emptyState');
-    if (emptyState) emptyState.style.display = 'none';
-
-    // Dim past session rows
-    document.querySelectorAll('.session-row:not(.live)').forEach(r => r.classList.add('dimmed'));
-
-    // Wire timeline to live row container
-    currentSession.timelineEl = $('liveTimeline');
-
-    // Disable New Capture button
-    const newCaptureBtn = $('newCaptureBtn');
-    if (newCaptureBtn) { newCaptureBtn.disabled = true; newCaptureBtn.textContent = 'Recording...'; }
-
-    // Show header recording indicator
-    const recIndicator = $('headerRecIndicator');
-    if (recIndicator) recIndicator.classList.add('active');
 
     // Start mic meter
     startMicMeter(micStreamRef);
@@ -2192,7 +2393,7 @@ async function startSession() {
       captureScreenshot(currentSession).catch(e => log(`Auto-capture failed: ${e.message}`, 'error'));
     }, CAPTURE_INTERVAL);
 
-    // Start duration timer — update live row time and header indicator
+    // Start duration timer — update live row time, header indicator, and recorder widget
     currentSession.durationIntervalId = setInterval(() => {
       const elapsed = (Date.now() - currentSession.startTime) / 1000;
       const t = formatTime(elapsed);
@@ -2200,6 +2401,8 @@ async function startSession() {
       if (liveTime) liveTime.textContent = t;
       const headerTime = $('headerRecTime');
       if (headerTime) headerTime.textContent = t;
+      const rwTime = $('rwTime');
+      if (rwTime) rwTime.textContent = t;
     }, 500);
 
     // Take initial screenshot once video is ready
@@ -2230,6 +2433,16 @@ async function startSession() {
   } catch (err) {
     log(`Error: ${err.message}`, 'error');
     cleanup();
+    // Reset recorder widget on failure
+    if (RECORDER_MODE) {
+      if (rwUpdateInterval) { clearInterval(rwUpdateInterval); rwUpdateInterval = null; }
+      const widget = $('recorderWidget');
+      if (widget) widget.classList.remove('rw-recording');
+      const dot = $('rwDot');
+      if (dot) dot.classList.remove('recording');
+      const rwStatus = $('rwStatus');
+      if (rwStatus) rwStatus.textContent = 'Failed — try again';
+    }
   }
 }
 
@@ -2353,6 +2566,51 @@ async function stopSession() {
     log('Session saved to: ' + session.savedPath, 'success');
   } else {
     log('ZIP ready for download (server save failed)', 'success');
+  }
+
+  // ── Recorder widget: notify parent + auto-close ──
+  if (RECORDER_MODE) {
+    const sessionName = session.savedPath ? session.savedPath.split('/').filter(Boolean).pop() : null;
+    const result = {
+      type: 'feedbacks:session-saved',
+      sessionPath: session.savedPath || null,
+      sessionName: sessionName,
+      ticketId: session.ticketId || null,
+      duration: formatTime(duration),
+      imageCount: session.screenshots.length,
+      sttCount: session.transcriptSegments.length
+    };
+
+    // Notify parent window via postMessage (popup opener or iframe parent)
+    const messageTarget = window.opener || (window.parent !== window ? window.parent : null);
+    if (messageTarget) {
+      try { messageTarget.postMessage(result, RECORDER_ORIGIN); } catch(e) {}
+    }
+
+    // Update widget to done state
+    if (rwUpdateInterval) clearInterval(rwUpdateInterval);
+    const widget = $('recorderWidget');
+    if (widget) { widget.classList.remove('rw-recording'); widget.classList.add('rw-done'); }
+    const dot = $('rwDot');
+    if (dot) { dot.classList.remove('recording'); dot.classList.add('done'); }
+    const rwStatus = $('rwStatus');
+    if (rwStatus) rwStatus.textContent = session.savedPath ? 'Session saved' : 'Save failed';
+
+    // Auto-close window
+    if (RECORDER_AUTOCLOSE) {
+      setTimeout(() => { try { window.close(); } catch(e) {} }, 2000);
+      setTimeout(() => {
+        if (!window.closed && rwStatus) {
+          rwStatus.textContent = 'Saved — you can close this window';
+        }
+      }, 2500);
+    }
+
+    // Skip full-app live-row transition below
+    const newCaptureBtn = $('newCaptureBtn');
+    if (newCaptureBtn) { newCaptureBtn.disabled = false; newCaptureBtn.textContent = 'New Capture'; }
+    document.querySelectorAll('.session-row').forEach(r => r.classList.remove('dimmed'));
+    return;
   }
 
   // ── Transition live row to saved state ──
@@ -3009,6 +3267,86 @@ function cleanup() {
   stopMicMeter();
 }
 
+// ── Recorder Widget ──
+let rwUpdateInterval = null;
+
+function initRecorderWidget() {
+  document.body.classList.add('recorder-mode');
+
+  // Show ticket badge if provided
+  const ticket = _params.get('ticket');
+  if (ticket) {
+    const rwTicket = $('rwTicket');
+    if (rwTicket) { rwTicket.textContent = ticket.trim().toUpperCase(); rwTicket.classList.add('visible'); }
+    // Pre-fill hidden captureTicketId so startSession() reads it
+    if ($('captureTicketId')) $('captureTicketId').value = ticket.trim().toUpperCase();
+  }
+
+  if (RECORDER_TITLE) {
+    const rwTicket = $('rwTicket');
+    if (rwTicket && !ticket) { rwTicket.textContent = RECORDER_TITLE; rwTicket.classList.add('visible'); }
+  }
+
+  if (RECORDER_AUTOSTART) {
+    setTimeout(() => rwStart(), 200);
+  }
+
+  // Warn before closing during active recording
+  window.addEventListener('beforeunload', (e) => {
+    if (currentSession && currentSession.isRecording) {
+      e.preventDefault();
+    }
+  });
+}
+
+async function rwStart() {
+  const widget = $('recorderWidget');
+  const status = $('rwStatus');
+
+  if (status) status.textContent = 'Starting capture...';
+
+  await startSession();
+
+  if (currentSession && currentSession.isRecording) {
+    if (widget) widget.classList.add('rw-recording');
+    if (status) status.textContent = '';
+    const dot = $('rwDot');
+    if (dot) dot.classList.add('recording');
+    // Update widget stats on interval
+    rwUpdateInterval = setInterval(rwUpdateDisplay, 500);
+  } else {
+    // startSession failed (user cancelled screen share, etc.)
+    if (widget) widget.classList.remove('rw-recording');
+    if (status) status.textContent = 'Cancelled — try again';
+  }
+}
+
+function rwStop() {
+  const stopBtn = $('rwStopBtn');
+  if (stopBtn) { stopBtn.disabled = true; stopBtn.textContent = 'Saving...'; }
+  const status = $('rwStatus');
+  if (status) status.textContent = 'Processing...';
+  if (rwUpdateInterval) { clearInterval(rwUpdateInterval); rwUpdateInterval = null; }
+  stopSession().catch(err => {
+    log('Recorder stop error: ' + err.message, 'error');
+    if (stopBtn) { stopBtn.disabled = false; stopBtn.textContent = 'Finish'; }
+    if (status) status.textContent = 'Error — try again';
+  });
+}
+
+function rwUpdateDisplay() {
+  if (!currentSession) return;
+  // Timer
+  const elapsed = (Date.now() - currentSession.startTime) / 1000;
+  const rwTime = $('rwTime');
+  if (rwTime) rwTime.textContent = formatTime(elapsed);
+  // Stats
+  const rwImg = $('rwImgCount');
+  if (rwImg) rwImg.textContent = currentSession.screenshots.length + ' img';
+  const rwStt = $('rwSttCount');
+  if (rwStt) rwStt.textContent = currentSession.transcribedCount + '/' + currentSession.chunkCount + ' stt';
+}
+
 // ── Init ──
 // Start whisper health check targeting header elements
 checkWhisper();
@@ -3017,13 +3355,17 @@ whisperCheckId = setInterval(checkWhisper, 5000);
 // Initialize mic preview
 initMicPreview();
 
-// Load existing sessions into list
-loadSessions();
+if (RECORDER_MODE) {
+  initRecorderWidget();
+} else {
+  // Load existing sessions into list
+  loadSessions();
 
-// Pre-fill capture ticket from URL query param
-const _urlTicket = new URLSearchParams(location.search).get('ticket');
-if (_urlTicket && $('captureTicketId')) {
-  $('captureTicketId').value = _urlTicket.trim().toUpperCase();
+  // Pre-fill capture ticket from URL query param
+  const _urlTicket = _params.get('ticket');
+  if (_urlTicket && $('captureTicketId')) {
+    $('captureTicketId').value = _urlTicket.trim().toUpperCase();
+  }
 }
 </script>
 </body>

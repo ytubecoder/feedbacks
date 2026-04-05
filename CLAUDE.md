@@ -83,3 +83,34 @@ Each session saves to `sessions/feedbacks-{timestamp}/` with: `session.md`, `pla
 ## Ticket Integration
 
 Optional `?ticket=B-05` query param links sessions to tickets. The `/review` skill from ticket-takeaway can pick up sessions from `docs/features/{ID}/feedbacks/`. See README.md for details.
+
+## Recorder Widget Mode (Embeddable API)
+
+Open feedbacks in a compact popup for other apps to trigger screen+voice capture:
+
+```
+http://localhost:8080/?mode=recorder&ticket=B-24
+```
+
+### Query Parameters
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `mode=recorder` | — | Activates compact widget mode |
+| `ticket=X` | — | Pre-links session to ticket ID |
+| `autostart=1` | `0` | Auto-start recording on load |
+| `autoclose=0` | `1` in recorder mode | Disable auto-close after save |
+| `origin=URL` | `*` | Restrict postMessage target origin |
+| `title=text` | — | Optional label in widget header |
+
+### Completion Notification
+
+On save, sends `postMessage` to `window.opener` (popup) or `window.parent` (iframe):
+
+```js
+{ type: 'feedbacks:session-saved', sessionPath, sessionName, ticketId, duration, imageCount, sttCount }
+```
+
+### Implementation
+
+All in `index.html` — CSS class `body.recorder-mode` hides full app, shows `#recorderWidget`. Widget state toggled via `#recorderWidget.rw-recording` / `.rw-done` classes. Reuses existing `startSession()`/`stopSession()` — no backend changes. Timeline entries, mic meter, duration timer, and status strip all update both full-app and widget elements when in recorder mode.
