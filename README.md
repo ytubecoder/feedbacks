@@ -32,14 +32,7 @@ claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py
 Restart Claude Code. You now have:
 
 - **`/feedbacks`** — skill command to setup whisper, start capture, watch live, or analyze sessions
-- **MCP tools** — Claude can browse saved sessions and stream live captures directly
-
-| MCP Tool | Purpose |
-|----------|---------|
-| `feedbacks_sessions()` | List all saved sessions with dates, durations, AI summaries and ticket ID (if provided) |
-| `feedbacks_session(name)` | Get a session's full timeline — screenshots + transcripts |
-| `feedbacks_status()` | Check if a live capture is in progress |
-| `feedbacks_poll(since)` | Stream live capture events grouped by speech spans |
+- **MCP tools** — Claude can browse saved sessions and stream live captures directly (see [Claude Code MCP](#claude-code-mcp) for details)
 
 Then run `/feedbacks` — first run builds whisper.cpp and downloads a model. After that, it starts the capture server at **http://localhost:8080**.
 
@@ -147,6 +140,31 @@ The `/feedbacks` skill reads each screenshot, correlates cursor position with sp
 ## Feedbacks Integration
 
 Get Feedbacks at [github.com/ytubecoder/feedbacks](https://github.com/ytubecoder/feedbacks/).
+
+### Claude Code MCP
+
+Feedbacks ships an MCP server that gives Claude Code direct access to your capture sessions — both saved and live. Install it once:
+
+```bash
+pip install mcp
+claude mcp add feedbacks -- python3 $(pwd)/mcp_server.py
+```
+
+**Saved sessions** — the MCP server reads directly from the `sessions/` directory on disk. No running server needed. Claude can browse past sessions, read full timelines, and view every screenshot.
+
+| Tool | Purpose |
+|------|---------|
+| `feedbacks_sessions()` | List all saved sessions with dates, durations, ticket IDs, and AI summaries |
+| `feedbacks_session(name)` | Full timeline for one session — metadata, screenshots as absolute file paths, transcripts grouped by speech span |
+
+**Live capture** — during a recording, the browser pushes events to `server.py` in real time. The MCP server bridges these into Claude Code so your agent can watch the session as it happens.
+
+| Tool | Purpose |
+|------|---------|
+| `feedbacks_status()` | Check if a live capture is active |
+| `feedbacks_poll(since)` | Get timeline events since a sequence number — screenshots + transcripts grouped by speech spans. Pass `latestSeqNum` from the previous poll for incremental updates. |
+
+Use `/feedbacks watch` or call `feedbacks_poll()` in a loop to stream a live session. Screenshots are written to `/tmp/feedbacks-live/{sessionId}/images/` — Claude reads them with the Read tool. When the session is saved, the session ID matches the final directory name in `sessions/`.
 
 ### Ticket Linking
 
