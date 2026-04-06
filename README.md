@@ -82,8 +82,9 @@ FEEDBACKS_OUTPUT_DIR=./my-sessions python3 server.py # custom output directory
 2. **Share your screen** — Chrome's native share dialog opens immediately
 3. **Talk and point** — move your cursor to things as you narrate. Screenshots auto-capture every second when the screen changes.
 4. **Voice activity detection** — audio chunks are only sent to whisper when you're speaking. Silence is ignored, eliminating hallucinations. The recording row glows green when your voice is detected.
-5. **Switch back** to the feedbacks tab and click **Stop**
-6. **Copy the path** to clipboard or download the ZIP
+5. **Transcription activity** — animated indicator shows when audio is being transcribed, with a brief preview of the result
+6. **Switch back** to the feedbacks tab and click **Stop**
+7. **Copy the path** to clipboard or download the ZIP
 
 Screenshots include your cursor position (baked in by the browser's screen capture API), so when you say "this area here" while pointing, the screenshot shows exactly where you meant.
 
@@ -101,6 +102,8 @@ sessions/feedbacks-2026-03-31-12-07-32/
     ├── 002.png
     └── ...
 ```
+
+`player.html` includes an interactive timeline with tick marks for each screenshot and purple transcript bars showing where speech occurred — scrub through the session visually.
 
 ### session.md format
 
@@ -141,11 +144,13 @@ The session output is designed for direct LLM consumption:
 
 The `/feedbacks` skill reads each screenshot, correlates cursor position with speech, and provides structured feedback with action items.
 
-## Ticket Integration
+## Feedbacks Integration
+
+Get Feedbacks at [github.com/ytubecoder/feedbacks](https://github.com/ytubecoder/feedbacks/).
+
+### Ticket Linking
 
 Feedbacks can optionally link a session to a ticket ID. This is useful when reviewing features tracked in a project management system.
-
-### Setting a ticket ID
 
 **Via URL parameter:**
 ```
@@ -157,8 +162,6 @@ The field pre-fills as read-only.
 
 **Retroactively:** If you forget to set a ticket ID before recording, a prompt appears after stopping: "No ticket linked." Enter the ID there — it updates the download filename.
 
-### Effect on output
-
 When a ticket ID is set:
 - `session.md` header includes a `Ticket: B-05` line
 - ZIP filename becomes `feedbacks-B-05-2026-03-31T12-07-32.zip` (instead of `feedbacks-2026-...`)
@@ -166,7 +169,7 @@ When a ticket ID is set:
 
 When no ticket ID is set, everything works identically to before.
 
-## Embedding in Other Apps (Recorder Widget)
+### Recorder Widget (Embed in Other Apps)
 
 Open feedbacks in a compact popup from any app for quick capture sessions:
 
@@ -187,7 +190,7 @@ window.addEventListener('message', (e) => {
 });
 ```
 
-The widget shows recording controls, mic level, screenshot/transcript counters, and a live timeline — same capture engine as the full app. After save, it auto-closes the popup and sends a `postMessage` with session details.
+The widget shows recording controls, mic level, screenshot/transcript counters, and a live timeline — same capture engine as the full app. The border color reflects state: red while recording, blue while processing/saving, green when done. A transcription activity indicator (animated dots + result preview) shows STT progress in real time. After save, the widget counts down ("Closing in 2...", "Closing in 1...") before auto-closing and sending a `postMessage` with session details.
 
 | Param | Default | Description |
 |-------|---------|-------------|

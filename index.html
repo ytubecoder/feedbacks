@@ -586,6 +586,47 @@
   .status-dot.done { background: var(--success); }
   .status-dot.pending { background: #f59e0b; animation: pulse 2s ease-in-out infinite; }
 
+  /* Transcription activity indicator */
+  .stt-activity {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    color: var(--muted-fg);
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 0;
+    opacity: 0;
+    transition: max-width 0.3s ease, opacity 0.3s ease;
+  }
+  .stt-activity.visible {
+    max-width: 220px;
+    opacity: 1;
+  }
+  .stt-activity .stt-dots {
+    display: inline-flex;
+    gap: 2px;
+  }
+  .stt-activity .stt-dots span {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: sttBounce 1.2s ease-in-out infinite;
+  }
+  .stt-activity .stt-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .stt-activity .stt-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes sttBounce {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.2); }
+  }
+  .stt-activity .stt-text {
+    color: #f59e0b;
+    font-weight: 500;
+  }
+  .stt-activity.stt-done .stt-text {
+    color: var(--success);
+  }
+
   /* Status badge (pill with dot + label) */
   .status-badge {
     display: inline-flex; align-items: center; gap: 0.3rem;
@@ -854,6 +895,20 @@
     padding: 0.75rem;
     box-sizing: border-box;
     gap: 0.5rem;
+    border: 3px solid var(--border);
+    transition: border-color 0.3s, background 0.3s;
+  }
+  #recorderWidget.rw-recording {
+    border-color: var(--destructive);
+    background: rgba(239,68,68,0.03);
+  }
+  #recorderWidget.rw-processing {
+    border-color: #3b82f6;
+    background: rgba(59,130,246,0.03);
+  }
+  #recorderWidget.rw-done {
+    border-color: var(--success);
+    background: rgba(74,222,128,0.03);
   }
 
   .rw-header {
@@ -873,6 +928,10 @@
   .rw-dot.recording {
     background: var(--destructive);
     animation: pulse 1.5s ease-in-out infinite;
+  }
+  .rw-dot.processing {
+    background: #3b82f6;
+    animation: none;
   }
   .rw-dot.done {
     background: var(--success);
@@ -966,12 +1025,60 @@
   #recorderWidget.rw-recording .rw-start { display: none; }
   #recorderWidget.rw-done .rw-stop,
   #recorderWidget.rw-done .rw-start { display: none; }
+  #recorderWidget.rw-processing .rw-stop,
+  #recorderWidget.rw-processing .rw-start { display: none; }
 
   .rw-status {
     text-align: center;
     font-size: 0.7rem;
     color: var(--muted-fg);
     min-height: 1rem;
+    position: relative;
+  }
+
+  /* Bottom indicator bars */
+  .rw-indicator {
+    position: relative;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .rw-indicator-rec {
+    height: 4px;
+    background: var(--destructive);
+    opacity: 0;
+    border-radius: 2px;
+    transition: opacity 0.3s;
+  }
+  #recorderWidget.rw-recording .rw-indicator-rec {
+    opacity: 1;
+    animation: recGlow 2s ease-in-out infinite;
+  }
+  @keyframes recGlow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  .rw-indicator-stt {
+    height: 2px;
+    background: var(--info);
+    opacity: 0;
+    border-radius: 1px;
+    margin-bottom: 2px;
+    transition: opacity 0.3s;
+  }
+  .rw-indicator-stt.active {
+    opacity: 1;
+  }
+
+  #recorderWidget.rw-processing .rw-indicator-rec {
+    background: #3b82f6;
+    opacity: 1;
+    animation: none;
+  }
+  #recorderWidget.rw-done .rw-indicator-rec {
+    background: var(--success);
+    opacity: 1;
+    animation: none;
   }
 
   /* Scrollbar for widget timeline */
@@ -1034,6 +1141,7 @@
     <div class="rw-stats">
       <span id="rwImgCount">0 img</span>
       <span id="rwSttCount">0/0 stt</span>
+      <span class="stt-activity" id="rwSttActivity"></span>
     </div>
   </div>
   <div class="rw-timeline timeline-feed" id="rwTimeline"></div>
@@ -1042,6 +1150,10 @@
     <button id="rwStopBtn" class="rw-btn rw-stop" onclick="rwStop()">Finish</button>
   </div>
   <div class="rw-status" id="rwStatus"></div>
+  <div class="rw-indicator">
+    <div class="rw-indicator-stt" id="rwSttBar"></div>
+    <div class="rw-indicator-rec" id="rwRecBar"></div>
+  </div>
 </div>
 
 <!-- ═══ Session List ═══ -->
@@ -1546,6 +1658,16 @@ function createLiveRow() {
   liveStats.appendChild(sttCount);
   liveHeader.appendChild(liveStats);
 
+  const sttActivity = createEl('span', 'stt-activity');
+  sttActivity.id = 'liveSttActivity';
+  const dots = createEl('span', 'stt-dots');
+  dots.appendChild(createEl('span'));
+  dots.appendChild(createEl('span'));
+  dots.appendChild(createEl('span'));
+  sttActivity.appendChild(dots);
+  sttActivity.appendChild(createEl('span', 'stt-text', 'Transcribing...'));
+  liveHeader.appendChild(sttActivity);
+
   row.appendChild(liveHeader);
 
   const liveTimeline = createEl('div', 'live-timeline timeline-feed');
@@ -1894,6 +2016,77 @@ function updateStatusStrip() {
   }
 }
 
+// ── STT activity indicator ──
+let _sttActiveCount = 0;
+let _sttFlashTimer = null;
+
+function sttActivityShow() {
+  _sttActiveCount++;
+  const els = [document.getElementById('liveSttActivity'), document.getElementById('rwSttActivity')];
+  for (const el of els) {
+    if (!el) continue;
+    el.classList.remove('stt-done');
+    el.classList.add('visible');
+    // Ensure dots + text are present (widget element starts empty)
+    if (!el.querySelector('.stt-dots')) {
+      const dots = document.createElement('span');
+      dots.className = 'stt-dots';
+      for (let i = 0; i < 3; i++) dots.appendChild(document.createElement('span'));
+      el.appendChild(dots);
+    }
+    let textEl = el.querySelector('.stt-text');
+    if (!textEl) {
+      textEl = document.createElement('span');
+      textEl.className = 'stt-text';
+      el.appendChild(textEl);
+    }
+    textEl.textContent = 'Transcribing...';
+  }
+  // Blue STT bar in widget
+  const sttBar = document.getElementById('rwSttBar');
+  if (sttBar) sttBar.classList.add('active');
+}
+
+function sttActivityDone(text) {
+  _sttActiveCount = Math.max(0, _sttActiveCount - 1);
+  // Show brief flash of result
+  const preview = text && text.length > 0 && !text.startsWith('(')
+    ? '\u2713 ' + (text.length > 30 ? text.slice(0, 30) + '\u2026' : text)
+    : '\u2713 Done';
+  const els = [document.getElementById('liveSttActivity'), document.getElementById('rwSttActivity')];
+  for (const el of els) {
+    if (!el) continue;
+    const textEl = el.querySelector('.stt-text');
+    if (textEl) textEl.textContent = preview;
+    el.classList.add('stt-done');
+    // Hide dots during flash
+    const dots = el.querySelector('.stt-dots');
+    if (dots) dots.style.display = 'none';
+  }
+  // After flash, either show next active transcription or hide
+  clearTimeout(_sttFlashTimer);
+  _sttFlashTimer = setTimeout(() => {
+    for (const el of els) {
+      if (!el) continue;
+      const dots = el.querySelector('.stt-dots');
+      if (_sttActiveCount > 0) {
+        el.classList.remove('stt-done');
+        if (dots) dots.style.display = '';
+        const textEl = el.querySelector('.stt-text');
+        if (textEl) textEl.textContent = 'Transcribing...';
+      } else {
+        el.classList.remove('visible', 'stt-done');
+        if (dots) dots.style.display = '';
+      }
+    }
+    // Hide blue STT bar when no active transcriptions
+    if (_sttActiveCount === 0) {
+      const sttBar = document.getElementById('rwSttBar');
+      if (sttBar) sttBar.classList.remove('active');
+    }
+  }, 1500);
+}
+
 // ── Whisper health check ──
 async function checkWhisper() {
   const dot = $('headerSttDot');
@@ -2203,6 +2396,7 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
 
   // Use /transcribe proxy which converts WebM→WAV via ffmpeg before forwarding to whisper
   const transcribeUrl = '/transcribe';
+  sttActivityShow();
 
   try {
     const resp = await fetch(transcribeUrl, {
@@ -2250,6 +2444,7 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
         replaceSTTPlaceholder(chunkNum, `\u26a0 Filtered: repeated "${repeatedPhrase}" x${maxCount}`, offsetTime, session.timelineEl, offsetTime + (data.duration || 10));
         session.transcribedCount++;
         updateStatusStrip();
+        sttActivityDone('');
         return;
       }
     }
@@ -2278,6 +2473,7 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
 
     replaceSTTPlaceholder(chunkNum, transcriptText || '(no speech detected)', offsetTime, session.timelineEl, chunkEndTime);
     updateStatusStrip();
+    sttActivityDone(transcriptText);
     log(`Chunk ${chunkNum} transcribed (${segments.length} segments)`, 'success');
   } catch (err) {
     log(`Chunk ${chunkNum} failed: ${err.message}`, 'error');
@@ -2289,6 +2485,7 @@ async function transcribeChunk(audioBlob, ext, offsetTime, chunkNum, session) {
     session.transcribedCount++;
     replaceSTTPlaceholder(chunkNum, `(Chunk ${chunkNum} transcription failed)`, offsetTime, session.timelineEl);
     updateStatusStrip();
+    sttActivityDone('');
   }
 }
 
@@ -2493,6 +2690,28 @@ async function stopSession() {
   // Stop mic meter immediately — no longer recording
   stopMicMeter();
 
+  // Clear STT activity indicator — transcriptions will complete but indicator no longer needed
+  _sttActiveCount = 0;
+  clearTimeout(_sttFlashTimer);
+  const sttEls = [document.getElementById('liveSttActivity'), document.getElementById('rwSttActivity')];
+  for (const el of sttEls) { if (el) el.classList.remove('visible', 'stt-done'); }
+  const sttBar = document.getElementById('rwSttBar');
+  if (sttBar) sttBar.classList.remove('active');
+
+  // Switch recorder to processing state (handles screen-share-ended path that bypasses rwStop)
+  if (RECORDER_MODE) {
+    const rwDot = $('rwDot');
+    if (rwDot && rwDot.classList.contains('recording')) {
+      rwDot.classList.remove('recording');
+      rwDot.classList.add('processing');
+    }
+    const rwW = $('recorderWidget');
+    if (rwW && rwW.classList.contains('rw-recording')) {
+      rwW.classList.remove('rw-recording');
+      rwW.classList.add('rw-processing');
+    }
+  }
+
   // Update header UI immediately so it doesn't look stuck during transcription
   const headerRecIndicator = $('headerRecIndicator');
   if (headerRecIndicator) headerRecIndicator.classList.remove('active');
@@ -2590,20 +2809,29 @@ async function stopSession() {
     // Update widget to done state
     if (rwUpdateInterval) clearInterval(rwUpdateInterval);
     const widget = $('recorderWidget');
-    if (widget) { widget.classList.remove('rw-recording'); widget.classList.add('rw-done'); }
+    if (widget) { widget.classList.remove('rw-recording', 'rw-processing'); widget.classList.add('rw-done'); }
     const dot = $('rwDot');
-    if (dot) { dot.classList.remove('recording'); dot.classList.add('done'); }
+    if (dot) { dot.classList.remove('recording', 'processing'); dot.classList.add('done'); }
     const rwStatus = $('rwStatus');
     if (rwStatus) rwStatus.textContent = session.savedPath ? 'Session saved' : 'Save failed';
 
-    // Auto-close window
+    // Auto-close: green 1s → countdown in status → close
     if (RECORDER_AUTOCLOSE) {
-      setTimeout(() => { try { window.close(); } catch(e) {} }, 2000);
+      setTimeout(() => {
+        if (rwStatus) rwStatus.textContent = 'Closing in 2…';
+      }, 1000);
+      setTimeout(() => {
+        if (rwStatus) rwStatus.textContent = 'Closing in 1…';
+      }, 2000);
+      setTimeout(() => {
+        if (rwStatus) rwStatus.textContent = 'Closing…';
+        try { window.close(); } catch(e) {}
+      }, 3000);
       setTimeout(() => {
         if (!window.closed && rwStatus) {
           rwStatus.textContent = 'Saved — you can close this window';
         }
-      }, 2500);
+      }, 3500);
     }
 
     // Skip full-app live-row transition below
@@ -3076,6 +3304,8 @@ select{background:#1a1a1a;color:#e0e0e0;border:1px solid #333;border-radius:6px;
 .timeline-markers{position:absolute;top:0;left:0;right:0;bottom:0}
 .timeline-tick{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,0.15)}
 .timeline-tick.current{background:#4ade80;width:3px}
+.timeline-transcripts{position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.timeline-transcript{position:absolute;bottom:0;height:6px;background:rgba(168,85,247,0.5);border-radius:2px;pointer-events:none}
 </style>
 </head>
 <body>
@@ -3087,6 +3317,7 @@ select{background:#1a1a1a;color:#e0e0e0;border:1px solid #333;border-radius:6px;
 <div class="timeline" id="timeline" onclick="onTimelineClick(event)">
   <div class="timeline-fill" id="timelineFill"></div>
   <div class="timeline-markers" id="timelineMarkers"></div>
+  <div class="timeline-transcripts" id="timelineTranscripts"></div>
 </div>
 <div class="controls">
   <button onclick="prev()" title="Previous (Left arrow)">&#9664; Prev</button>
@@ -3121,6 +3352,17 @@ slides.forEach((s,i) => {
   tick.dataset.index = i;
   tick.style.left = (s.timestamp / totalDuration * 100) + '%';
   markersEl.appendChild(tick);
+});
+
+// Build transcript duration bars
+const transcriptsEl = $('timelineTranscripts');
+slides.forEach((s,i) => {
+  if (!s.transcript) return;
+  const bar = document.createElement('div');
+  bar.className = 'timeline-transcript';
+  bar.style.left = (s.timestamp / totalDuration * 100) + '%';
+  bar.style.width = (s.duration / totalDuration * 100) + '%';
+  transcriptsEl.appendChild(bar);
 });
 
 function show(index) {
@@ -3327,9 +3569,16 @@ function rwStop() {
   const status = $('rwStatus');
   if (status) status.textContent = 'Processing...';
   if (rwUpdateInterval) { clearInterval(rwUpdateInterval); rwUpdateInterval = null; }
+  // Immediately switch to processing state (blue border + blue dot)
+  const dot = $('rwDot');
+  if (dot) { dot.classList.remove('recording'); dot.classList.add('processing'); }
+  const rwWidget = $('recorderWidget');
+  if (rwWidget) { rwWidget.classList.remove('rw-recording'); rwWidget.classList.add('rw-processing'); }
   stopSession().catch(err => {
     log('Recorder stop error: ' + err.message, 'error');
     if (stopBtn) { stopBtn.disabled = false; stopBtn.textContent = 'Finish'; }
+    if (dot) { dot.classList.remove('processing'); }
+    if (rwWidget) { rwWidget.classList.remove('rw-processing'); }
     if (status) status.textContent = 'Error — try again';
   });
 }
