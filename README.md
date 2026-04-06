@@ -139,7 +139,7 @@ The `/feedbacks` skill reads each screenshot, correlates cursor position with sp
 
 ## Ticket Takeaway Integration
 
-Feedbacks pairs with [Ticket Takeaway](https://github.com/ytubecoder/ticket-takeaway/) — a lightweight SDLC dashboard that tracks features from ideation to release. Link capture sessions to tickets so feedback flows straight into your development workflow.
+Feedbacks pairs with [Ticket Takeaway](https://github.com/ytubecoder/ticket-takeaway/) — a lightweight kanban board that tracks features from ideation to release. Link capture sessions to tickets so feedback flows straight into your development workflow.
 
 ### Claude Code MCP
 
