@@ -137,9 +137,9 @@ The session output is designed for direct LLM consumption:
 
 The `/feedbacks` skill reads each screenshot, correlates cursor position with speech, and provides structured feedback with action items.
 
-## Feedbacks Integration
+## Ticket Takeaway Integration
 
-Get Feedbacks at [github.com/ytubecoder/feedbacks](https://github.com/ytubecoder/feedbacks/).
+Feedbacks pairs with [Ticket Takeaway](https://github.com/ytubecoder/ticket-takeaway/) — a lightweight SDLC dashboard that tracks features from ideation to release. Link capture sessions to tickets so feedback flows straight into your development workflow.
 
 ### Claude Code MCP
 
