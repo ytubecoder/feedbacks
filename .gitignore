@@ -5,3 +5,5 @@ __pycache__/
 .superpowers/
 docs/superpowers/
 whisper.cpp/
+.claude/
+CLAUDE.md

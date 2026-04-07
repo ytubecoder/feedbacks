@@ -434,7 +434,7 @@ def feedbacks_status() -> str:
     data = _get_live_session(since=999999999)  # High since = no events returned, just metadata
 
     if data.get("error"):
-        return f"Feedbacks server not reachable: {data['error']}\nMake sure server.py is running (python3 server.py in ~/projects/feedbacks)"
+        return f"Feedbacks server not reachable: {data['error']}\nMake sure server.py is running (python3 server.py in the feedbacks directory)"
 
     if not data.get("sessionId"):
         return "No active capture session. Start a capture in the feedbacks browser UI (http://localhost:8080)."
