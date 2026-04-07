@@ -81,6 +81,20 @@ FEEDBACKS_OUTPUT_DIR=./my-sessions python3 server.py # custom output directory
 
 Screenshots include your cursor position (baked in by the browser's screen capture API), so when you say "this area here" while pointing, the screenshot shows exactly where you meant.
 
+## Browser UI
+
+The app runs entirely in one browser tab at **http://localhost:8080**.
+
+**Session list** — the home screen shows all past sessions as expandable cards. Each card has a hero thumbnail, status badge (recording / transcribing / summarizing / done), duration, screenshot and transcript counts, and an AI-generated summary when available. Click a card to expand the detail view.
+
+**Live recording** — during capture, a live row appears at the top of the session list with a real-time timeline feed. Screenshots and transcript entries appear as they arrive. A green speaking indicator with mic level bars shows when your voice is detected. Animated dots indicate when audio is being transcribed, with a brief preview of the result when it finishes.
+
+**Detail view** — expand any session to see a vertical timeline with screenshot + transcript pairs grouped by speech spans. Silent periods show as collapsed context frames. The full transcript and all images are visible inline — no need to open separate files.
+
+**Auto-save** — sessions save to disk automatically when you stop recording. No manual export step. Copy the session path to clipboard or download a ZIP for sharing.
+
+**Player** — each session also generates a self-contained `player.html` slideshow. Open it in any browser for keyboard-navigable playback with a timeline scrubber, screenshot tick marks, and purple transcript bars showing where speech occurred.
+
 ## Output Format
 
 Each session saves to `sessions/feedbacks-{timestamp}/`:
